@@ -1,15 +1,20 @@
 import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../src/constants/colors';
 
-// Simple text-based tab icons for now
-// We'll swap these for real icons later
+// This is a small helper component that renders the tab icon.
+// 'name' is the icon name, 'color' and 'size' come from the tab bar automatically.
+function TabIcon({ name, color, size }) {
+  return <Ionicons name={name} size={size} color={color} />;
+}
+
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,           // no top header bar
-        tabBarActiveTintColor: colors.primary,    // gold when active
-        tabBarInactiveTintColor: colors.textMuted, // gray when inactive
+        headerShown: false,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
           backgroundColor: colors.card,
           borderTopColor: colors.border,
@@ -24,19 +29,60 @@ export default function TabLayout() {
     >
       <Tabs.Screen
         name="home"
-        options={{ title: 'Home' }}
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color, size, focused }) => (
+            // focused = true when this tab is active
+            // we switch between filled and outline icon based on that
+            <TabIcon
+              name={focused ? 'home' : 'home-outline'}
+              color={color}
+              size={size}
+            />
+          ),
+        }}
       />
+
       <Tabs.Screen
         name="products"
-        options={{ title: 'Products' }}
+        options={{
+          title: 'Products',
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon
+              name={focused ? 'grid' : 'grid-outline'}
+              color={color}
+              size={size}
+            />
+          ),
+        }}
       />
+
       <Tabs.Screen
         name="cart"
-        options={{ title: 'Cart' }}
+        options={{
+          title: 'Cart',
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon
+              name={focused ? 'bag' : 'bag-outline'}
+              color={color}
+              size={size}
+            />
+          ),
+        }}
       />
+
       <Tabs.Screen
         name="profile"
-        options={{ title: 'Profile' }}
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon
+              name={focused ? 'person' : 'person-outline'}
+              color={color}
+              size={size}
+            />
+          ),
+        }}
       />
     </Tabs>
   );
