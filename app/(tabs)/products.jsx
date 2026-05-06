@@ -7,10 +7,11 @@ import {
   ActivityIndicator,
   StyleSheet,
   RefreshControl,
-  SafeAreaView,
   Image,
   TextInput,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getProducts } from '../../src/services/productService';
@@ -27,18 +28,18 @@ const formatCategory = (cat) => {
   return cat.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 };
 
-// Static Unsplash banner image — skincare themed
-const BANNER_IMAGE = 'https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=600&q=80';
+const BANNER_IMAGE =
+  'https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=600&q=80';
 
 export default function ProductsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [products, setProducts]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [category, setCategory]     = useState('All');
   const [error, setError]           = useState(null);
-  const [showSearch, setShowSearch] = useState(false);
   const [search, setSearch]         = useState('');
 
   const fetchProducts = useCallback(async () => {
@@ -66,53 +67,45 @@ export default function ProductsScreen() {
     setRefreshing(false);
   };
 
-  // This renders everything above the product grid as the list header
-  // so the whole screen scrolls together as one FlatList
   const ListHeader = () => (
     <View>
 
       {/* ── Top bar ── */}
       <View style={styles.topBar}>
+        <View>
+          <Text style={styles.greeting}>Hello 👋</Text>
+          <Text style={styles.topBarTitle}>Find your skincare</Text>
+        </View>
         <TouchableOpacity style={styles.iconBtn}>
-          <Ionicons name="menu-outline" size={26} color={colors.primary} />
-        </TouchableOpacity>
-
-        <Text style={styles.topBarTitle}>Skincare</Text>
-
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => setShowSearch((prev) => !prev)}
-        >
-          <Ionicons name="search-outline" size={24} color={colors.primary} />
+          <Ionicons name="notifications-outline" size={20} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* ── Search bar — shown only when search icon is tapped ── */}
-      {showSearch && (
-        <View style={styles.searchRow}>
-          <Ionicons name="search-outline" size={16} color={colors.textMuted} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search products..."
-            placeholderTextColor={colors.textMuted}
-            value={search}
-            onChangeText={setSearch}
-            autoFocus
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')} hitSlop={8}>
-              <Ionicons name="close-circle" size={16} color={colors.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
+      {/* ── Search ── */}
+      <View style={styles.searchRow}>
+        <Ionicons name="search-outline" size={16} color={colors.textMuted} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search products..."
+          placeholderTextColor={colors.textMuted}
+          value={search}
+          onChangeText={setSearch}
+        />
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch('')} hitSlop={8}>
+            <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
+      </View>
 
-      {/* ── Hero banner ── */}
+      {/* ── Banner ── */}
       <View style={styles.banner}>
         <View style={styles.bannerTextCol}>
+          <Text style={styles.bannerLabel}>NEW COLLECTION</Text>
           <Text style={styles.bannerTitle}>Glow up your{'\n'}skincare routine</Text>
-          <TouchableOpacity style={styles.bannerBtn}>
+          <TouchableOpacity style={styles.bannerBtn} activeOpacity={0.85}>
             <Text style={styles.bannerBtnText}>Explore</Text>
+            <Ionicons name="arrow-forward" size={12} color={colors.primary} />
           </TouchableOpacity>
         </View>
         <Image
@@ -146,14 +139,22 @@ export default function ProductsScreen() {
         }}
       />
 
-      {/* ── Popular label ── */}
-      <Text style={styles.sectionTitle}>Popular</Text>
+      {/* ── Popular row ── */}
+      <View style={styles.popularRow}>
+        <Text style={styles.sectionTitle}>Popular</Text>
+        {products.length > 0 && (
+          <Text style={styles.itemCount}>{products.length} items</Text>
+        )}
+      </View>
 
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    // Plain View — insets.top handles the notch manually
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {loading ? (
         <View style={styles.centered}>
@@ -200,12 +201,12 @@ export default function ProductsScreen() {
         />
       )}
 
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: colors.background,
   },
@@ -213,17 +214,22 @@ const styles = StyleSheet.create({
   // Top bar
   topBar: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 14,
   },
+  greeting: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginBottom: 2,
+  },
   topBarTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: colors.primary,
-    letterSpacing: 0.3,
+    letterSpacing: -0.3,
   },
   iconBtn: {
     width: 38,
@@ -232,6 +238,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 4,
   },
 
   // Search
@@ -240,13 +247,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: colors.card,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
     marginHorizontal: 20,
-    marginBottom: 14,
-    paddingHorizontal: 12,
-    height: 42,
+    marginBottom: 16,
+    paddingHorizontal: 14,
+    height: 44,
   },
   searchInput: {
     flex: 1,
@@ -259,49 +266,71 @@ const styles = StyleSheet.create({
   banner: {
     marginHorizontal: 20,
     marginBottom: 24,
-    borderRadius: 16,
-    backgroundColor: colors.primary,   // deep forest green banner
+    borderRadius: 18,
+    backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     overflow: 'hidden',
-    height: 140,
+    height: 150,
   },
   bannerTextCol: {
     flex: 1,
     paddingLeft: 20,
     paddingVertical: 20,
-    gap: 14,
+    gap: 6,
+  },
+  bannerLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.accent,
+    letterSpacing: 1.5,
+    marginBottom: 2,
   },
   bannerTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: colors.white,
-    lineHeight: 23,
+    lineHeight: 22,
   },
   bannerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     alignSelf: 'flex-start',
-    backgroundColor: colors.accent,     // blush button on green banner
-    paddingHorizontal: 16,
-    paddingVertical: 7,
+    backgroundColor: colors.accent,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 20,
+    marginTop: 6,
   },
   bannerBtnText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    color: colors.primary,              // green text on blush button
+    color: colors.primary,
   },
   bannerImage: {
-    width: 140,
+    width: 130,
     height: '100%',
   },
 
   // Section titles
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: colors.text,
     marginHorizontal: 20,
     marginBottom: 12,
+  },
+  popularRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 20,
+    marginBottom: 4,
+  },
+  itemCount: {
+    fontSize: 12,
+    color: colors.textMuted,
   },
 
   // Category pills
@@ -349,7 +378,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 12,
-    paddingTop: 60,
+    paddingTop: 80,
   },
   errorText: {
     fontSize: 14,
