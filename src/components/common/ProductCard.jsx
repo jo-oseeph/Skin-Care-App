@@ -1,9 +1,8 @@
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { colors } from '../../constants/colors';
 
-// Props this component expects:
-// product  → the product object from your API
-// onPress  → function to call when the card is tapped
+const CARD_WIDTH = (Dimensions.get('window').width - 56) / 2;
+
 export default function ProductCard({ product, onPress }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
@@ -24,17 +23,16 @@ export default function ProductCard({ product, onPress }) {
       {/* Card content */}
       <View style={styles.info}>
 
-        {/* Category label — small tag above the name */}
+        {/* Category label */}
         <Text style={styles.category}>{product.category}</Text>
 
-        {/* Product name */}
+        {/* Product name — max 2 lines */}
         <Text style={styles.name} numberOfLines={2}>{product.name}</Text>
 
         {/* Price and stock row */}
         <View style={styles.bottom}>
           <Text style={styles.price}>KSh {product.price.toLocaleString()}</Text>
 
-          {/* Show out of stock label if stock is 0 */}
           {product.stock === 0 && (
             <Text style={styles.outOfStock}>Out of stock</Text>
           )}
@@ -49,18 +47,19 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     borderRadius: 12,
-    overflow: 'hidden',         // clips the image to the card's rounded corners
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: 16,
+    width: CARD_WIDTH,
+    marginBottom: 12,
   },
   image: {
     width: '100%',
-    height: 180,
+    height: 140,
   },
   imagePlaceholder: {
     width: '100%',
-    height: 180,
+    height: 140,
     backgroundColor: colors.inputBg,
     justifyContent: 'center',
     alignItems: 'center',
@@ -70,35 +69,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   info: {
-    padding: 12,
+    padding: 10,
   },
   category: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.primary,
     fontWeight: '600',
-    textTransform: 'uppercase',   // MOISTURIZER, SERUM etc
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
   name: {
-    fontSize: 15,
+    fontSize: 13,
     color: colors.text,
     fontWeight: '500',
-    marginBottom: 8,
-    lineHeight: 21,
+    marginBottom: 6,
+    lineHeight: 19,
   },
   bottom: {
-    flexDirection: 'row',         // price and out-of-stock side by side
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   price: {
-    fontSize: 16,
+    fontSize: 14,
     color: colors.text,
     fontWeight: '700',
   },
   outOfStock: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.error,
     fontWeight: '500',
   },

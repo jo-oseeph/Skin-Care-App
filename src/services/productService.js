@@ -1,18 +1,20 @@
-import { create } from 'axios';
+import axios from 'axios';
 import { BASE_URL } from '../constants/api';
 
-// We create a simple axios instance pointed at your backend
-const api = create({
-  baseURL: BASE_URL,
-  timeout: 10000,
-});
-
-// Fetch all products — supports optional filters
-// Example: getProducts({ category: 'moisturizer', search: 'glow' })
+// ── GET ALL PRODUCTS ─────────────────────────────────────
+// Backend returns: { success, products: [], pagination: {} }
 export const getProducts = async (params = {}) => {
   try {
-    const response = await api.get('/products', { params });
-    return { success: true, data: response.data };
+    const response = await axios.get(`${BASE_URL}/products`, {
+      params,
+      timeout: 10000,
+    });
+
+    return {
+      success: true,
+      products: response.data.products,
+      pagination: response.data.pagination,
+    };
   } catch (error) {
     return {
       success: false,
@@ -21,11 +23,18 @@ export const getProducts = async (params = {}) => {
   }
 };
 
-// Fetch a single product by its ID
+// ── GET SINGLE PRODUCT ────────────────────────────────────
+// Backend returns: { success, data: { ...product } }
 export const getProduct = async (id) => {
   try {
-    const response = await api.get(`/products/${id}`);
-    return { success: true, data: response.data };
+    const response = await axios.get(`${BASE_URL}/products/${id}`, {
+      timeout: 10000,
+    });
+
+    return {
+      success: true,
+      product: response.data.data,
+    };
   } catch (error) {
     return {
       success: false,
