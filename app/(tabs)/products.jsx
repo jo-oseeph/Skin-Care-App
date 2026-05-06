@@ -73,8 +73,7 @@ export default function ProductsScreen() {
       {/* ── Top bar ── */}
       <View style={styles.topBar}>
         <View>
-          <Text style={styles.greeting}>Hello 👋</Text>
-          <Text style={styles.topBarTitle}>Find your skincare</Text>
+          <Text style={styles.topBarTitle}>Discover Products</Text>
         </View>
         <TouchableOpacity style={styles.iconBtn}>
           <Ionicons name="notifications-outline" size={20} color={colors.primary} />
@@ -101,8 +100,7 @@ export default function ProductsScreen() {
       {/* ── Banner ── */}
       <View style={styles.banner}>
         <View style={styles.bannerTextCol}>
-          <Text style={styles.bannerLabel}>NEW COLLECTION</Text>
-          <Text style={styles.bannerTitle}>Glow up your{'\n'}skincare routine</Text>
+          <Text style={styles.bannerTitle}>Glow up your skincare routine</Text>
           <TouchableOpacity style={styles.bannerBtn} activeOpacity={0.85}>
             <Text style={styles.bannerBtnText}>Explore</Text>
             <Ionicons name="arrow-forward" size={12} color={colors.primary} />
@@ -151,7 +149,7 @@ export default function ProductsScreen() {
   );
 
   return (
-    // Plain View — insets.top handles the notch manually
+
     <View style={[styles.container, { paddingTop: insets.top }]}>
 
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
@@ -249,7 +247,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.primary,
     marginHorizontal: 20,
     marginBottom: 16,
     paddingHorizontal: 14,
