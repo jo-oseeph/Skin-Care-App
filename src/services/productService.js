@@ -1,8 +1,7 @@
 import axios from 'axios';
 import { BASE_URL } from '../constants/api';
 
-// ── GET ALL PRODUCTS ─────────────────────────────────────
-// Backend returns: { success, products: [], pagination: {} }
+// GET ALL PRODUCTS 
 export const getProducts = async (params = {}) => {
   try {
     const response = await axios.get(`${BASE_URL}/products`, {
@@ -23,8 +22,7 @@ export const getProducts = async (params = {}) => {
   }
 };
 
-// ── GET SINGLE PRODUCT ────────────────────────────────────
-// Backend returns: { success, data: { ...product } }
+// GET SINGLE PRODUCT 
 export const getProduct = async (id) => {
   try {
     const response = await axios.get(`${BASE_URL}/products/${id}`, {

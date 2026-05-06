@@ -1,15 +1,26 @@
-
 export const colors = {
-  primary: '#C9A96E',           // warm gold — main brand color
-  primaryDark: '#A8844A',       // darker gold for pressed buttons
-  background: '#F7F3EE',        // cream — main background
-  card: '#FFFFFF',              // white cards
-  inputBg: '#F9F6F2',           // light input fields
-  border: '#E8E0D5',            // subtle borders
-  text: '#1A1A1A',              // main text (almost black)
-  textSecondary: '#6B7280',     // muted text (labels, hints)
-  textMuted: '#9CA3AF',         // very muted (placeholders)
+  // ── Brand ──────────────────────────────────────────────
+  primary: '#1F3D3B',           // Deep Forest Green — buttons, active states
+  primaryLight: '#2D5654',      // slightly lighter green — hover/pressed
+  primaryDark: '#152B2A',       // darker green — shadows, depth
+  accent: '#F5E6E8',            // Soft Nude/Blush — highlights, backgrounds
+  accentDark: '#E8CACE',        // deeper blush — borders on blush bg
+
+  // ── Backgrounds ────────────────────────────────────────
+  background: '#FAFAF9',        // near white with warm tint
+  card: '#FFFFFF',
+  inputBg: '#F7F3F3',           // blush tinted input bg
+
+  // ── Borders ────────────────────────────────────────────
+  border: '#EDE0E1',            // warm nude border
+
+  // ── Text ───────────────────────────────────────────────
+  text: '#1A1A1A',
+  textSecondary: '#4A5568',
+  textMuted: '#9CA3AF',
+
+  // ── Semantic ───────────────────────────────────────────
   white: '#FFFFFF',
-  error: '#EF4444',             // red for errors
-  success: '#10B981',           // green for success
+  error: '#C0392B',
+  success: '#1F3D3B',           // reuse green for success
 };

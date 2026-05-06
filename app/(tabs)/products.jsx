@@ -3,11 +3,13 @@ import {
   View,
   Text,
   FlatList,
-  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
   RefreshControl,
+  SafeAreaView,
+  Image,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,21 +17,18 @@ import { getProducts } from '../../src/services/productService';
 import ProductCard from '../../src/components/common/ProductCard';
 import { colors } from '../../src/constants/colors';
 
-// Exact values from your backend PRODUCT_CATEGORIES constant
-// 'All' is a frontend-only option meaning no category filter
 const CATEGORIES = [
-  'All',
-  'cleanser',
-  'serum',
-  'moisturizer',
-  'sunscreen',
-  'toner',
-  'exfoliant',
-  'mask',
-  'eye_cream',
-  'spot_treatment',
-  'oil',
+  'All','cleanser','serum','moisturizer','sunscreen',
+  'toner','exfoliant','mask','eye_cream','spot_treatment','oil',
 ];
+
+const formatCategory = (cat) => {
+  if (cat === 'All') return 'All';
+  return cat.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+};
+
+// Static Unsplash banner image — skincare themed
+const BANNER_IMAGE = 'https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=600&q=80';
 
 export default function ProductsScreen() {
   const router = useRouter();
@@ -37,121 +36,125 @@ export default function ProductsScreen() {
   const [products, setProducts]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch]         = useState('');
   const [category, setCategory]     = useState('All');
   const [error, setError]           = useState(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [search, setSearch]         = useState('');
 
-  // ── Fetch products ──────────────────────────────────────
   const fetchProducts = useCallback(async () => {
     const params = {};
-
-    // Only send category param if it's not 'All'
     if (category !== 'All') params.category = category;
-
-    // Only send search param if user typed something
     if (search.trim()) params.search = search.trim();
 
     const result = await getProducts(params);
-
     if (result.success) {
-      // result.products matches what our updated productService returns
       setProducts(result.products);
       setError(null);
     } else {
       setError(result.message);
     }
-  }, [search, category]);
+  }, [category, search]);
 
-  // Run on first load and whenever search or category changes
   useEffect(() => {
     setLoading(true);
     fetchProducts().finally(() => setLoading(false));
   }, [fetchProducts]);
 
-  // ── Pull to refresh ─────────────────────────────────────
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchProducts();
     setRefreshing(false);
   };
 
-  // ── Navigate to product detail ──────────────────────────
-  const handleProductPress = (product) => {
-    router.push(`/product/${product._id}`);
-  };
+  // This renders everything above the product grid as the list header
+  // so the whole screen scrolls together as one FlatList
+  const ListHeader = () => (
+    <View>
 
-  const renderProduct = ({ item }) => (
-    <ProductCard
-      product={item}
-      onPress={() => handleProductPress(item)}
-    />
-  );
+      {/* ── Top bar ── */}
+      <View style={styles.topBar}>
+        <TouchableOpacity style={styles.iconBtn}>
+          <Ionicons name="menu-outline" size={26} color={colors.primary} />
+        </TouchableOpacity>
 
-  // Capitalize first letter for display (eye_cream → Eye_cream)
-  // We do a simple replace of underscore with space too
-  const formatCategory = (cat) => {
-    if (cat === 'All') return 'All';
-    return cat.replace('_', ' ').replace(/^\w/, (c) => c.toUpperCase());
-  };
+        <Text style={styles.topBarTitle}>Skincare</Text>
 
-  return (
-    <View style={styles.container}>
-
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Products</Text>
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={() => setShowSearch((prev) => !prev)}
+        >
+          <Ionicons name="search-outline" size={24} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
-      {/* ── Search bar ── */}
-      <View style={styles.searchRow}>
-        <Ionicons
-          name="search-outline"
-          size={18}
-          color={colors.textMuted}
-          style={styles.searchIcon}
-        />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search products..."
-          placeholderTextColor={colors.textMuted}
-          value={search}
-          onChangeText={setSearch}
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+      {/* ── Search bar — shown only when search icon is tapped ── */}
+      {showSearch && (
+        <View style={styles.searchRow}>
+          <Ionicons name="search-outline" size={16} color={colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search products..."
+            placeholderTextColor={colors.textMuted}
+            value={search}
+            onChangeText={setSearch}
+            autoFocus
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={8}>
+              <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* ── Hero banner ── */}
+      <View style={styles.banner}>
+        <View style={styles.bannerTextCol}>
+          <Text style={styles.bannerTitle}>Glow up your{'\n'}skincare routine</Text>
+          <TouchableOpacity style={styles.bannerBtn}>
+            <Text style={styles.bannerBtnText}>Explore</Text>
           </TouchableOpacity>
-        )}
+        </View>
+        <Image
+          source={{ uri: BANNER_IMAGE }}
+          style={styles.bannerImage}
+          resizeMode="cover"
+        />
       </View>
 
-      {/* ── Category filter pills ── */}
+      {/* ── Categories ── */}
+      <Text style={styles.sectionTitle}>Categories</Text>
       <FlatList
         data={CATEGORIES}
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item}
-        contentContainerStyle={styles.categoriesContainer}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[
-              styles.categoryPill,
-              category === item && styles.categoryPillActive,
-            ]}
-            onPress={() => setCategory(item)}
-          >
-            <Text
-              style={[
-                styles.categoryText,
-                category === item && styles.categoryTextActive,
-              ]}
+        contentContainerStyle={styles.pillsRow}
+        renderItem={({ item }) => {
+          const isActive = category === item;
+          return (
+            <TouchableOpacity
+              style={[styles.pill, isActive && styles.pillActive]}
+              onPress={() => setCategory(item)}
+              activeOpacity={0.75}
             >
-              {formatCategory(item)}
-            </Text>
-          </TouchableOpacity>
-        )}
+              <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
+                {formatCategory(item)}
+              </Text>
+            </TouchableOpacity>
+          );
+        }}
       />
 
-      {/* ── Main content ── */}
+      {/* ── Popular label ── */}
+      <Text style={styles.sectionTitle}>Popular</Text>
+
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.safe}>
+
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -159,28 +162,34 @@ export default function ProductsScreen() {
 
       ) : error ? (
         <View style={styles.centered}>
-          <Ionicons name="wifi-outline" size={48} color={colors.textMuted} />
+          <Ionicons name="wifi-outline" size={44} color={colors.textMuted} />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchProducts}>
+          <TouchableOpacity style={styles.retryBtn} onPress={fetchProducts}>
             <Text style={styles.retryText}>Try again</Text>
           </TouchableOpacity>
-        </View>
-
-      ) : products.length === 0 ? (
-        <View style={styles.centered}>
-          <Ionicons name="search-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyText}>No products found</Text>
         </View>
 
       ) : (
         <FlatList
           data={products}
           keyExtractor={(item) => item._id}
-          renderItem={renderProduct}
-          numColumns={2}                      // 2 column grid
-          columnWrapperStyle={styles.row}     // styles the row wrapper
-          contentContainerStyle={styles.listContainer}
+          renderItem={({ item }) => (
+            <ProductCard
+              product={item}
+              onPress={() => router.push(`/product/${item._id}`)}
+            />
+          )}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={ListHeader}
+          ListEmptyComponent={
+            <View style={styles.centered}>
+              <Ionicons name="leaf-outline" size={44} color={colors.textMuted} />
+              <Text style={styles.emptyText}>No products found</Text>
+            </View>
+          }
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -191,105 +200,176 @@ export default function ProductsScreen() {
         />
       )}
 
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    paddingTop: 56,
+
+  // Top bar
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingTop: 10,
+    paddingBottom: 14,
   },
-  headerTitle: {
-    fontSize: 26,
+  topBarTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    color: colors.text,
+    color: colors.primary,
+    letterSpacing: 0.3,
   },
+  iconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Search
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
     backgroundColor: colors.card,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
     marginHorizontal: 20,
-    marginBottom: 12,
+    marginBottom: 14,
     paddingHorizontal: 12,
-    height: 44,
-  },
-  searchIcon: {
-    marginRight: 8,
+    height: 42,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     color: colors.text,
+    paddingVertical: 0,
   },
-  categoriesContainer: {
+
+  // Banner
+  banner: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    borderRadius: 16,
+    backgroundColor: colors.primary,   // deep forest green banner
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+    height: 140,
+  },
+  bannerTextCol: {
+    flex: 1,
+    paddingLeft: 20,
+    paddingVertical: 20,
+    gap: 14,
+  },
+  bannerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.white,
+    lineHeight: 23,
+  },
+  bannerBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.accent,     // blush button on green banner
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  bannerBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,              // green text on blush button
+  },
+  bannerImage: {
+    width: 140,
+    height: '100%',
+  },
+
+  // Section titles
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginHorizontal: 20,
+    marginBottom: 12,
+  },
+
+  // Category pills
+  pillsRow: {
     paddingHorizontal: 20,
-    paddingBottom: 14,
+    paddingBottom: 20,
     gap: 8,
+    alignItems: 'center',
   },
-  categoryPill: {
-    paddingHorizontal: 14,
+  pill: {
+    paddingHorizontal: 16,
     paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
   },
-  categoryPillActive: {
+  pillActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-  categoryText: {
-    fontSize: 13,
-    color: colors.textSecondary,
+  pillText: {
+    fontSize: 12,
     fontWeight: '500',
+    color: colors.textSecondary,
   },
-  categoryTextActive: {
+  pillTextActive: {
     color: colors.white,
     fontWeight: '600',
   },
-  listContainer: {
-    paddingHorizontal: 12,
-    paddingBottom: 20,
+
+  // Grid
+  listContent: {
+    paddingBottom: 30,
   },
   row: {
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    marginBottom: 12,
+    paddingHorizontal: 20,
+    marginBottom: 14,
   },
+
+  // States
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 12,
+    paddingTop: 60,
   },
   errorText: {
-    fontSize: 15,
+    fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: 40,
   },
   emptyText: {
-    fontSize: 15,
+    fontSize: 14,
     color: colors.textMuted,
   },
-  retryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 10,
+  retryBtn: {
+    paddingHorizontal: 22,
+    paddingVertical: 9,
     backgroundColor: colors.primary,
     borderRadius: 8,
   },
   retryText: {
     color: colors.white,
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 13,
   },
 });
