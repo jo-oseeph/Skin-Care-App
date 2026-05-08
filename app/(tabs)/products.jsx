@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,41 +10,53 @@ import {
   Image,
   TextInput,
   StatusBar,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { getProducts } from '../../src/services/productService';
-import ProductCard from '../../src/components/common/ProductCard';
-import { colors } from '../../src/constants/colors';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { getProducts } from "../../src/services/productService";
+import ProductCard from "../../src/components/common/ProductCard";
+import { colors } from "../../src/constants/colors";
 
 const CATEGORIES = [
-  'All','cleanser','serum','moisturizer','sunscreen',
-  'toner','exfoliant','mask','eye_cream','spot_treatment','oil',
+  "All",
+  "cleanser",
+  "serum",
+  "moisturizer",
+  "sunscreen",
+  "toner",
+  "exfoliant",
+  "mask",
+  "eye_cream",
+  "spot_treatment",
+  "oil",
 ];
 
 const formatCategory = (cat) => {
-  if (cat === 'All') return 'All';
-  return cat.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  if (cat === "All") return "All";
+  return cat
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 };
 
 const BANNER_IMAGE =
-  'https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=600&q=80';
+  "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=600&q=80";
 
 export default function ProductsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [products, setProducts]     = useState([]);
-  const [loading, setLoading]       = useState(true);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [category, setCategory]     = useState('All');
-  const [error, setError]           = useState(null);
-  const [search, setSearch]         = useState('');
+  const [category, setCategory] = useState("All");
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
 
   const fetchProducts = useCallback(async () => {
     const params = {};
-    if (category !== 'All') params.category = category;
+    if (category !== "All") params.category = category;
     if (search.trim()) params.search = search.trim();
 
     const result = await getProducts(params);
@@ -69,14 +81,17 @@ export default function ProductsScreen() {
 
   const ListHeader = () => (
     <View>
-
       {/* ── Top bar ── */}
       <View style={styles.topBar}>
         <View>
           <Text style={styles.topBarTitle}>Discover Products</Text>
         </View>
         <TouchableOpacity style={styles.iconBtn}>
-          <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+          <Ionicons
+            name="notifications-outline"
+            size={20}
+            color={colors.primary}
+          />
         </TouchableOpacity>
       </View>
 
@@ -91,7 +106,7 @@ export default function ProductsScreen() {
           onChangeText={setSearch}
         />
         {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')} hitSlop={8}>
+          <TouchableOpacity onPress={() => setSearch("")} hitSlop={8}>
             <Ionicons name="close-circle" size={16} color={colors.textMuted} />
           </TouchableOpacity>
         )}
@@ -129,7 +144,9 @@ export default function ProductsScreen() {
               onPress={() => setCategory(item)}
               activeOpacity={0.75}
             >
-              <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
+              <Text
+                style={[styles.pillText, isActive && styles.pillTextActive]}
+              >
                 {formatCategory(item)}
               </Text>
             </TouchableOpacity>
@@ -144,21 +161,17 @@ export default function ProductsScreen() {
           <Text style={styles.itemCount}>{products.length} items</Text>
         )}
       </View>
-
     </View>
   );
 
   return (
-
     <View style={[styles.container, { paddingTop: insets.top }]}>
-
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-
       ) : error ? (
         <View style={styles.centered}>
           <Ionicons name="wifi-outline" size={44} color={colors.textMuted} />
@@ -167,7 +180,6 @@ export default function ProductsScreen() {
             <Text style={styles.retryText}>Try again</Text>
           </TouchableOpacity>
         </View>
-
       ) : (
         <FlatList
           data={products}
@@ -185,7 +197,11 @@ export default function ProductsScreen() {
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={
             <View style={styles.centered}>
-              <Ionicons name="leaf-outline" size={44} color={colors.textMuted} />
+              <Ionicons
+                name="leaf-outline"
+                size={44}
+                color={colors.textMuted}
+              />
               <Text style={styles.emptyText}>No products found</Text>
             </View>
           }
@@ -198,7 +214,6 @@ export default function ProductsScreen() {
           }
         />
       )}
-
     </View>
   );
 }
@@ -211,9 +226,9 @@ const styles = StyleSheet.create({
 
   // Top bar
   topBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 14,
@@ -225,7 +240,7 @@ const styles = StyleSheet.create({
   },
   topBarTitle: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.primary,
     letterSpacing: -0.3,
   },
@@ -234,15 +249,15 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 10,
     backgroundColor: colors.accent,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 4,
   },
 
   // Search
   searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     backgroundColor: colors.card,
     borderRadius: 12,
@@ -266,9 +281,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderRadius: 18,
     backgroundColor: colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    overflow: 'hidden',
+    flexDirection: "row",
+    alignItems: "center",
+    overflow: "hidden",
     height: 150,
   },
   bannerTextCol: {
@@ -279,22 +294,22 @@ const styles = StyleSheet.create({
   },
   bannerLabel: {
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.accent,
     letterSpacing: 1.5,
     marginBottom: 2,
   },
   bannerTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.white,
     lineHeight: 22,
   },
   bannerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     backgroundColor: colors.accent,
     paddingHorizontal: 14,
     paddingVertical: 6,
@@ -303,26 +318,26 @@ const styles = StyleSheet.create({
   },
   bannerBtnText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.primary,
   },
   bannerImage: {
     width: 130,
-    height: '100%',
+    height: "100%",
   },
 
   // Section titles
   sectionTitle: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.text,
     marginHorizontal: 20,
     marginBottom: 12,
   },
   popularRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingRight: 20,
     marginBottom: 4,
   },
@@ -336,7 +351,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
     gap: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   pill: {
     paddingHorizontal: 16,
@@ -352,12 +367,12 @@ const styles = StyleSheet.create({
   },
   pillText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
     color: colors.textSecondary,
   },
   pillTextActive: {
     color: colors.white,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   // Grid
@@ -365,7 +380,7 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   row: {
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     marginBottom: 14,
   },
@@ -373,15 +388,15 @@ const styles = StyleSheet.create({
   // States
   centered: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     gap: 12,
     paddingTop: 80,
   },
   errorText: {
     fontSize: 14,
     color: colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     paddingHorizontal: 40,
   },
   emptyText: {
@@ -396,7 +411,7 @@ const styles = StyleSheet.create({
   },
   retryText: {
     color: colors.white,
-    fontWeight: '600',
+    fontWeight: "600",
     fontSize: 13,
   },
 });

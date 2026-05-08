@@ -1,12 +1,16 @@
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AuthProvider } from '../src/context/AuthContext';   // ← AuthContext
+import { CartProvider } from '../src/context/CartContext';   // ← CartContext
 
 export default function RootLayout() {
   return (
-    // SafeAreaProvider makes sure content doesn't go behind
-    // the phone's notch or bottom bar
     <SafeAreaProvider>
-      <Stack screenOptions={{ headerShown: false }} />
+      <AuthProvider>
+        <CartProvider>
+          <Stack screenOptions={{ headerShown: false }} />
+        </CartProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
