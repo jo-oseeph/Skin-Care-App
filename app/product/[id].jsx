@@ -29,14 +29,16 @@ const formatCategory = (cat) => {
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams();
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const router  = useRouter();
+  const insets  = useSafeAreaInsets();
 
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [product, setProduct]         = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState(null);
   const [activeImage, setActiveImage] = useState(0);
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity]       = useState(1);
+  const [added, setAdded]             = useState(false);   // success state
+  const [stockError, setStockError]   = useState(false);   // stock limit state
 
   const { addToCart } = useCart();
 
@@ -64,22 +66,23 @@ export default function ProductDetailScreen() {
   };
 
   const handleAddToCart = async () => {
-    console.log("--- ADD TO CART PRESSED ---");
-    console.log("Product ID:", product._id);
-    console.log("Product name:", product.name);
-    console.log("Quantity:", quantity);
-    console.log("addToCart type:", typeof addToCart);
-
-    if (typeof addToCart !== "function") {
-      console.error("addToCart is NOT a function — CartContext is broken");
-      return;
-    }
+    if (typeof addToCart !== "function") return;
 
     try {
-      await addToCart(product, quantity);
-      console.log("addToCart completed successfully");
+      const result = await addToCart(product, quantity);
+
+      if (result?.success === false) {
+        // Hit stock limit — flash red
+        setStockError(true);
+        setTimeout(() => setStockError(false), 1500);
+        return;
+      }
+
+      // Success — flash green
+      setAdded(true);
+      setTimeout(() => setAdded(false), 1500);
     } catch (err) {
-      console.error("addToCart threw an error:", err.message);
+      console.error("addToCart error:", err.message);
     }
   };
 
@@ -111,7 +114,7 @@ export default function ProductDetailScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
-      {/* Floating back + heart — position absolute over image */}
+      {/* Floating back + heart */}
       <View style={[styles.floatingHeader, { top: insets.top + 10 }]}>
         <TouchableOpacity
           style={styles.floatingBtn}
@@ -126,7 +129,7 @@ export default function ProductDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ScrollView takes all space above the bottom bar */}
+      {/* Scrollable content */}
       <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -280,7 +283,7 @@ export default function ProductDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* ── Bottom bar — OUTSIDE ScrollView so it's never blocked ── */}
+      {/* ── Bottom bar — outside ScrollView ── */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         <View style={styles.totalCol}>
           <Text style={styles.totalLabel}>Total</Text>
@@ -292,15 +295,28 @@ export default function ProductDetailScreen() {
         <TouchableOpacity
           style={[
             styles.addToCartBtn,
-            isOutOfStock && styles.addToCartBtnDisabled,
+            isOutOfStock  && styles.addToCartBtnDisabled,
+            added         && styles.addToCartBtnSuccess,
+            stockError    && styles.addToCartBtnError,
           ]}
-          disabled={isOutOfStock}
+          disabled={isOutOfStock || added || stockError}
           onPress={handleAddToCart}
           activeOpacity={0.85}
         >
-          <Ionicons name="bag-outline" size={18} color={colors.white} />
+          <Ionicons
+            name={
+              stockError  ? "alert-circle-outline" :
+              added       ? "checkmark" :
+                            "bag-outline"
+            }
+            size={18}
+            color={colors.white}
+          />
           <Text style={styles.addToCartText}>
-            {isOutOfStock ? "Out of stock" : "Add to cart"}
+            {isOutOfStock ? "Out of stock"
+              : stockError  ? `Max ${product.stock} allowed`
+              : added       ? "Added!"
+              :               "Add to cart"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -322,7 +338,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
 
-  // Floating buttons over image
+  // Floating buttons
   floatingHeader: {
     position: "absolute",
     left: 0,
@@ -348,7 +364,7 @@ const styles = StyleSheet.create({
 
   // ScrollView
   scroll: {
-    flex: 1,           // takes all space between top and bottom bar
+    flex: 1,
   },
   scrollContent: {
     paddingBottom: 16,
@@ -508,7 +524,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
 
-  // Bottom bar — natural flow, not absolute
+  // Bottom bar
   bottomBar: {
     backgroundColor: colors.card,
     borderTopWidth: 1,
@@ -543,6 +559,12 @@ const styles = StyleSheet.create({
   },
   addToCartBtnDisabled: {
     backgroundColor: colors.textMuted,
+  },
+  addToCartBtnSuccess: {
+    backgroundColor: colors.success,
+  },
+  addToCartBtnError: {
+    backgroundColor: colors.error,
   },
   addToCartText: {
     fontSize: 15,

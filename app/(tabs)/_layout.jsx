@@ -1,11 +1,50 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { View, Text } from 'react-native';
 import { colors } from '../../src/constants/colors';
+import { useCart } from '../../src/context/CartContext';
 
-// This is a small helper component that renders the tab icon.
-// 'name' is the icon name, 'color' and 'size' come from the tab bar automatically.
+// Basic tab icon used by Home, Products, Profile
 function TabIcon({ name, color, size }) {
   return <Ionicons name={name} size={size} color={color} />;
+}
+
+// Cart icon with a badge showing item count
+function CartIcon({ color, size, focused }) {
+  const { totalItems } = useCart();
+
+  return (
+    <View>
+      <Ionicons
+        name={focused ? 'bag' : 'bag-outline'}
+        size={size}
+        color={color}
+      />
+      {/* Only render the badge when there are items in the cart */}
+      {totalItems > 0 && (
+        <View style={{
+          position: 'absolute',
+          top: -4,
+          right: -6,
+          backgroundColor: colors.primary,
+          borderRadius: 8,
+          minWidth: 16,
+          height: 16,
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingHorizontal: 3,
+        }}>
+          <Text style={{
+            color: colors.white,
+            fontSize: 9,
+            fontWeight: '700',
+          }}>
+            {totalItems > 99 ? '99+' : totalItems}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
 }
 
 export default function TabLayout() {
@@ -32,8 +71,6 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, size, focused }) => (
-            // focused = true when this tab is active
-            // we switch between filled and outline icon based on that
             <TabIcon
               name={focused ? 'home' : 'home-outline'}
               color={color}
@@ -62,11 +99,7 @@ export default function TabLayout() {
         options={{
           title: 'Cart',
           tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon
-              name={focused ? 'bag' : 'bag-outline'}
-              color={color}
-              size={size}
-            />
+            <CartIcon color={color} size={size} focused={focused} />
           ),
         }}
       />

@@ -6,7 +6,7 @@ import React, {
   useCallback,
   useRef,
 } from 'react';
-import { useAuth } from './AuthContext';           // ← correct import
+import { useAuth } from './AuthContext';
 import { saveCartToStorage, getCartFromStorage } from '../utils/storage';
 import {
   fetchBackendCart,
@@ -80,14 +80,19 @@ const mergeCarts = (localItems, backendItems) => {
     const localItem = merged.find((i) => i.productId === productId);
 
     if (localItem) {
-      localItem.quantity = Math.max(localItem.quantity, backendItem.quantity);
+      // Take higher quantity but never exceed stock
+      const stock = backendItem.productId?.stock || localItem.stock || 0;
+      localItem.quantity = Math.min(
+        Math.max(localItem.quantity, backendItem.quantity),
+        stock
+      );
     } else {
       merged.push({
         productId,
-        name:     backendItem.productId?.name       || '',
-        price:    backendItem.productId?.price      || 0,
-        image:    backendItem.productId?.images?.[0]|| null,
-        stock:    backendItem.productId?.stock      || 0,
+        name:     backendItem.productId?.name        || '',
+        price:    backendItem.productId?.price       || 0,
+        image:    backendItem.productId?.images?.[0] || null,
+        stock:    backendItem.productId?.stock       || 0,
         quantity: backendItem.quantity,
       });
     }
@@ -100,8 +105,8 @@ export function CartProvider({ children }) {
   const [state, dispatch] = useReducer(cartReducer, initialState);
   const { isAuthenticated } = useAuth();
 
-  // We use a ref to access current items inside syncWithBackend
-  // without adding items as a dependency (which would cause infinite loops)
+  // Ref so we can read current items inside callbacks
+  // without causing infinite re-render loops
   const itemsRef = useRef(state.items);
   useEffect(() => {
     itemsRef.current = state.items;
@@ -117,36 +122,32 @@ export function CartProvider({ children }) {
     })();
   }, []);
 
-  // ── Step 2: Save to AsyncStorage on every change ──────────
+  // ── Step 2: Save to AsyncStorage on every cart change ─────
   useEffect(() => {
     saveCartToStorage(state.items);
   }, [state.items]);
 
-  // ── Backend sync — defined BEFORE the useEffect that calls it ──
+  // ── Backend sync ───────────────────────────────────────────
   const syncWithBackend = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', payload: true });
 
     const result = await fetchBackendCart();
 
     if (!result.success) {
-      // Backend unreachable — local cart still works fine
       dispatch({ type: 'SET_LOADING', payload: false });
       return;
     }
 
     const backendItems = result.data?.items || [];
-    const localItems   = itemsRef.current;   // read from ref, not state
+    const localItems   = itemsRef.current;
 
     if (localItems.length > 0 && backendItems.length > 0) {
-      // Both sides have items — merge
       const merged = mergeCarts(localItems, backendItems);
       dispatch({ type: 'SET_ITEMS', payload: merged });
-      // Push local-only items up to backend
       for (const item of localItems) {
         await addItemToBackend(item.productId, item.quantity);
       }
     } else if (backendItems.length > 0) {
-      // Only backend has items — normalize and use those
       const normalized = backendItems.map((item) => ({
         productId: item.productId?._id          || item.productId,
         name:      item.productId?.name         || '',
@@ -157,20 +158,33 @@ export function CartProvider({ children }) {
       }));
       dispatch({ type: 'SET_ITEMS', payload: normalized });
     } else {
-      // Only local items — nothing to merge, just mark synced
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, []); // no dependencies — reads items via ref
+  }, []);
 
-  // ── Step 3: React to auth changes ─────────────────────────
+  // ── Step 3: React to login/logout ─────────────────────────
   useEffect(() => {
     if (isAuthenticated) {
       syncWithBackend();
     }
   }, [isAuthenticated, syncWithBackend]);
 
-  // ── Cart actions ───────────────────────────────────────────
+  // ── ADD TO CART ────────────────────────────────────────────
   const addToCart = useCallback(async (product, quantity = 1) => {
+    // How many of this product are already in the cart
+    const existing = itemsRef.current.find(
+      (i) => i.productId === product._id
+    );
+    const currentQty = existing ? existing.quantity : 0;
+
+    // Block if adding would exceed available stock
+    if (currentQty + quantity > product.stock) {
+      return {
+        success: false,
+        message: `Only ${product.stock} available in stock`,
+      };
+    }
+
     const item = {
       productId: product._id,
       name:      product.name,
@@ -179,15 +193,28 @@ export function CartProvider({ children }) {
       stock:     product.stock,
       quantity,
     };
+
     dispatch({ type: 'ADD_ITEM', payload: item });
 
     if (isAuthenticated) {
       await addItemToBackend(product._id, quantity);
     }
+
+    return { success: true };
   }, [isAuthenticated]);
 
+  // ── UPDATE QUANTITY ────────────────────────────────────────
   const updateQuantity = useCallback(async (productId, quantity) => {
     if (quantity < 1) return;
+
+    // Find the item to check its stock limit
+    const item = itemsRef.current.find((i) => i.productId === productId);
+
+    // Block if new quantity exceeds stock
+    if (item && quantity > item.stock) {
+      return;
+    }
+
     dispatch({ type: 'UPDATE_QUANTITY', payload: { productId, quantity } });
 
     if (isAuthenticated) {
@@ -195,6 +222,7 @@ export function CartProvider({ children }) {
     }
   }, [isAuthenticated]);
 
+  // ── REMOVE FROM CART ───────────────────────────────────────
   const removeFromCart = useCallback(async (productId) => {
     dispatch({ type: 'REMOVE_ITEM', payload: productId });
 
@@ -203,6 +231,7 @@ export function CartProvider({ children }) {
     }
   }, [isAuthenticated]);
 
+  // ── CLEAR CART ─────────────────────────────────────────────
   const clearCart = useCallback(async () => {
     dispatch({ type: 'CLEAR_CART' });
 
