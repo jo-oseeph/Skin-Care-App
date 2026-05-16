@@ -11,11 +11,11 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCart } from "../../src/context/CartContext";
+import { useRequireAuth } from "../../src/hooks/useRequireAuth";
 import { colors } from "../../src/constants/colors";
 
-
 // ── Single cart item row ───────────────────────────────────
-function CartItem({ item, onIncrease, onDecrease, onRemove }) {
+function CartItem({ item, onIncrease, onDecrease }) {
   return (
     <View style={styles.itemCard}>
 
@@ -39,11 +39,10 @@ function CartItem({ item, onIncrease, onDecrease, onRemove }) {
           KSh {item.price.toLocaleString()}
         </Text>
 
-        {/* Quantity controls + remove button */}
         <View style={styles.itemBottom}>
           <View style={styles.qtyControls}>
 
-            {/* Decrease — if qty is 1 this removes the item */}
+            {/* Decrease — if qty is 1 tap removes the item */}
             <TouchableOpacity
               style={styles.qtyBtn}
               onPress={onDecrease}
@@ -80,7 +79,7 @@ function CartItem({ item, onIncrease, onDecrease, onRemove }) {
             </TouchableOpacity>
           </View>
 
-          {/* Subtotal for this item */}
+          {/* Subtotal for this line item */}
           <Text style={styles.itemSubtotal}>
             KSh {(item.price * item.quantity).toLocaleString()}
           </Text>
@@ -93,9 +92,17 @@ function CartItem({ item, onIncrease, onDecrease, onRemove }) {
 
 // ── Cart screen ────────────────────────────────────────────
 export default function CartScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { items, totalItems, totalPrice, updateQuantity, removeFromCart, clearCart } = useCart();
+  const router  = useRouter();
+  const insets  = useSafeAreaInsets();
+  const { requireAuth } = useRequireAuth();
+  const {
+    items,
+    totalItems,
+    totalPrice,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+  } = useCart();
 
   const isEmpty = items.length === 0;
 
@@ -105,25 +112,29 @@ export default function CartScreen() {
 
   const handleDecrease = (item) => {
     if (item.quantity === 1) {
-      // qty is already 1 — remove item entirely
       removeFromCart(item.productId);
     } else {
       updateQuantity(item.productId, item.quantity - 1);
     }
   };
 
-  // ── Empty state ───────────────────────────────────────────
+  const handleCheckout = () => {
+    // requireAuth checks if logged in
+    // if not → pushes to login screen automatically
+    // if yes → runs the callback
+    requireAuth(() => router.push("/checkout"));
+  };
+
+  // ── Empty state ────────────────────────────────────────────
   if (isEmpty) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>My Cart</Text>
         </View>
 
-        {/* Empty illustration */}
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconCircle}>
             <Ionicons name="bag-outline" size={48} color={colors.primary} />
@@ -145,7 +156,7 @@ export default function CartScreen() {
     );
   }
 
-  // ── Cart with items ───────────────────────────────────────
+  // ── Cart with items ────────────────────────────────────────
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
@@ -153,17 +164,15 @@ export default function CartScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Cart</Text>
-        {/* Item count badge */}
         <View style={styles.countBadge}>
           <Text style={styles.countText}>{totalItems} items</Text>
         </View>
-        {/* Clear all button */}
         <TouchableOpacity onPress={clearCart} hitSlop={8}>
           <Text style={styles.clearText}>Clear all</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Cart items list */}
+      {/* Items list + order summary */}
       <FlatList
         data={items}
         keyExtractor={(item) => item.productId}
@@ -172,13 +181,10 @@ export default function CartScreen() {
             item={item}
             onIncrease={() => handleIncrease(item)}
             onDecrease={() => handleDecrease(item)}
-            onRemove={() => removeFromCart(item.productId)}
           />
         )}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-
-        // Order summary pinned above the checkout button
         ListFooterComponent={
           <View style={styles.summaryCard}>
             <Text style={styles.summaryTitle}>Order Summary</Text>
@@ -209,16 +215,16 @@ export default function CartScreen() {
         }
       />
 
-      {/* Checkout button — sits above the phone's home bar */}
+      {/* Checkout bar */}
       <View style={[styles.checkoutBar, { paddingBottom: insets.bottom + 16 }]}>
-       <TouchableOpacity
-  style={styles.checkoutBtn}
-  activeOpacity={0.85}
-  onPress={() => requireAuth(() => router.push("/checkout"))}
->
-  <Text style={styles.checkoutText}>Proceed to Checkout</Text>
-  <Ionicons name="arrow-forward" size={18} color={colors.white} />
-</TouchableOpacity>
+        <TouchableOpacity
+          style={styles.checkoutBtn}
+          activeOpacity={0.85}
+          onPress={handleCheckout}
+        >
+          <Text style={styles.checkoutText}>Proceed to Checkout</Text>
+          <Ionicons name="arrow-forward" size={18} color={colors.white} />
+        </TouchableOpacity>
       </View>
 
     </View>
@@ -230,8 +236,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-
-  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -244,7 +248,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
     color: colors.primary,
-    flex: 1,              // pushes badge and clear button to the right
+    flex: 1,
   },
   countBadge: {
     backgroundColor: colors.accent,
@@ -262,15 +266,11 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontWeight: "500",
   },
-
-  // List
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 20,
     gap: 12,
   },
-
-  // Cart item card
   itemCard: {
     backgroundColor: colors.card,
     borderRadius: 14,
@@ -315,8 +315,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 8,
   },
-
-  // Quantity controls
   qtyControls: {
     flexDirection: "row",
     alignItems: "center",
@@ -349,8 +347,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.primary,
   },
-
-  // Order summary card
   summaryCard: {
     backgroundColor: colors.card,
     borderRadius: 16,
@@ -399,8 +395,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: colors.primary,
   },
-
-  // Checkout bar
   checkoutBar: {
     backgroundColor: colors.card,
     borderTopWidth: 1,
@@ -422,8 +416,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.white,
   },
-
-  // Empty state
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
