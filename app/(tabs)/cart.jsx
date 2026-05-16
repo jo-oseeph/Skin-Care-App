@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCart } from "../../src/context/CartContext";
 import { colors } from "../../src/constants/colors";
 
+
 // ── Single cart item row ───────────────────────────────────
 function CartItem({ item, onIncrease, onDecrease, onRemove }) {
   return (
@@ -210,14 +211,14 @@ export default function CartScreen() {
 
       {/* Checkout button — sits above the phone's home bar */}
       <View style={[styles.checkoutBar, { paddingBottom: insets.bottom + 16 }]}>
-        <TouchableOpacity
-          style={styles.checkoutBtn}
-          activeOpacity={0.85}
-          onPress={() => router.push("/checkout")}
-        >
-          <Text style={styles.checkoutText}>Proceed to Checkout</Text>
-          <Ionicons name="arrow-forward" size={18} color={colors.white} />
-        </TouchableOpacity>
+       <TouchableOpacity
+  style={styles.checkoutBtn}
+  activeOpacity={0.85}
+  onPress={() => requireAuth(() => router.push("/checkout"))}
+>
+  <Text style={styles.checkoutText}>Proceed to Checkout</Text>
+  <Ionicons name="arrow-forward" size={18} color={colors.white} />
+</TouchableOpacity>
       </View>
 
     </View>

@@ -6,7 +6,6 @@ import { colors } from "../src/constants/colors";
 export default function Index() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Show spinner while checking stored token on boot
   if (isLoading) {
     return (
       <View style={{
@@ -20,6 +19,7 @@ export default function Index() {
     );
   }
 
-  // Redirect based on auth state
-  return <Redirect href={isAuthenticated ? "/(tabs)/home" : "/(auth)/login"} />;
+  // Everyone goes to home — logged in or not
+  // Login is only triggered when needed (checkout, orders)
+  return <Redirect href="/(tabs)/home" />;
 }
