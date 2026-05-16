@@ -39,15 +39,18 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
-    clearError();
-    if (!validate()) return;
+  clearError();
+  if (!validate()) return;
 
-    const result = await login(email.trim().toLowerCase(), password);
-    if (result.success) {
-      // Navigate to home — cart sync happens automatically in CartContext
+  const result = await login(email.trim().toLowerCase(), password);
+  if (result.success) {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
       router.replace("/(tabs)/home");
     }
-  };
+  }
+};
 
   return (
     <View style={styles.container}>
