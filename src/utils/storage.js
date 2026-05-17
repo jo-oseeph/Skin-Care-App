@@ -3,9 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TOKEN_KEY = 'skincare_token';
 const USER_KEY  = 'skincare_user';
-const CART_KEY  = 'skincare_cart';
 
-// ── Token (SecureStore — encrypted) ───────────────────────
+// ── Token ──────────────────────────────────────────────────
 export const saveToken = async (token) => {
   await SecureStore.setItemAsync(TOKEN_KEY, token);
 };
@@ -16,7 +15,7 @@ export const removeToken = async () => {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
 };
 
-// ── User (SecureStore — encrypted) ────────────────────────
+// ── User ───────────────────────────────────────────────────
 export const saveUser = async (user) => {
   await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
 };
@@ -28,24 +27,36 @@ export const removeUser = async () => {
   await SecureStore.deleteItemAsync(USER_KEY);
 };
 
-// ── Cart (AsyncStorage — persists for guests too) ─────────
-// We use AsyncStorage here instead of SecureStore because
-// cart data isn't sensitive — it just needs to persist across sessions
-export const saveCartToStorage = async (items) => {
-  await AsyncStorage.setItem(CART_KEY, JSON.stringify(items));
-};
-export const getCartFromStorage = async () => {
-  const cart = await AsyncStorage.getItem(CART_KEY);
-  return cart ? JSON.parse(cart) : [];
-};
-export const removeCartFromStorage = async () => {
-  await AsyncStorage.removeItem(CART_KEY);
+// ── Cart — keyed per user ID ───────────────────────────────
+// Each user gets their own cart key: skincare_cart_userId
+// This means two users on the same device never share a cart
+
+const getCartKey = (userId) => `skincare_cart_${userId}`;
+const GUEST_CART_KEY = 'skincare_cart_guest';
+
+// Save cart for a specific user
+export const saveCartToStorage = async (items, userId = null) => {
+  const key = userId ? getCartKey(userId) : GUEST_CART_KEY;
+  await AsyncStorage.setItem(key, JSON.stringify(items));
 };
 
-// ── Clear everything on logout ─────────────────────────────
+// Get cart for a specific user
+export const getCartFromStorage = async (userId = null) => {
+  const key = userId ? getCartKey(userId) : GUEST_CART_KEY;
+  const cart = await AsyncStorage.getItem(key);
+  return cart ? JSON.parse(cart) : [];
+};
+
+// Remove cart for a specific user
+export const removeCartFromStorage = async (userId = null) => {
+  const key = userId ? getCartKey(userId) : GUEST_CART_KEY;
+  await AsyncStorage.removeItem(key);
+};
+
+// Clear everything on logout
 export const clearAll = async () => {
   await removeToken();
   await removeUser();
-  // Note: we intentionally do NOT clear cart on logout
-  // Cart clears only when user explicitly checks out or we merge with backend
+  // Note: we do NOT clear the cart here
+  // Cart is cleared per-user in CartContext when auth changes
 };

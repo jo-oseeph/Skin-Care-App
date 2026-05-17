@@ -7,7 +7,11 @@ import React, {
   useRef,
 } from 'react';
 import { useAuth } from './AuthContext';
-import { saveCartToStorage, getCartFromStorage } from '../utils/storage';
+import {
+  saveCartToStorage,
+  getCartFromStorage,
+  removeCartFromStorage,
+} from '../utils/storage';
 import {
   fetchBackendCart,
   addItemToBackend,
@@ -64,7 +68,7 @@ function cartReducer(state, action) {
         items: state.items.filter((i) => i.productId !== action.payload),
       };
     case 'CLEAR_CART':
-      return { ...state, items: [] };
+      return { ...state, items: [], isSynced: false };
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     default:
@@ -80,7 +84,6 @@ const mergeCarts = (localItems, backendItems) => {
     const localItem = merged.find((i) => i.productId === productId);
 
     if (localItem) {
-      // Take higher quantity but never exceed stock
       const stock = backendItem.productId?.stock || localItem.stock || 0;
       localItem.quantity = Math.min(
         Math.max(localItem.quantity, backendItem.quantity),
@@ -103,28 +106,41 @@ const mergeCarts = (localItems, backendItems) => {
 
 export function CartProvider({ children }) {
   const [state, dispatch] = useReducer(cartReducer, initialState);
-  const { isAuthenticated } = useAuth();
 
-  // Ref so we can read current items inside callbacks
-  // without causing infinite re-render loops
+  // Get user and auth state from AuthContext
+  const { isAuthenticated, user } = useAuth();
+
+  // userId is null for guests, string ID for logged-in users
+  const userId = user?.id || null;
+
+  // Ref so callbacks can read latest items without causing loops
   const itemsRef = useRef(state.items);
   useEffect(() => {
     itemsRef.current = state.items;
   }, [state.items]);
 
-  // ── Step 1: Restore cart from AsyncStorage on boot ────────
+  // Keep userId in a ref too so async callbacks always have the latest
+  const userIdRef = useRef(userId);
   useEffect(() => {
-    (async () => {
-      const saved = await getCartFromStorage();
+    userIdRef.current = userId;
+  }, [userId]);
+
+  // ── Boot: restore cart from AsyncStorage ───────────────────
+  // We pass userId so guests and each logged-in user get their own cart
+  useEffect(() => {
+    const restore = async () => {
+      const saved = await getCartFromStorage(userId);
       if (saved.length > 0) {
         dispatch({ type: 'SET_ITEMS', payload: saved });
       }
-    })();
-  }, []);
+    };
+    restore();
+  }, [userId]); // re-runs when userId changes (login/logout)
 
-  // ── Step 2: Save to AsyncStorage on every cart change ─────
+  // ── Save cart to AsyncStorage on every change ──────────────
   useEffect(() => {
-    saveCartToStorage(state.items);
+    // Always save under the current user's key
+    saveCartToStorage(state.items, userIdRef.current);
   }, [state.items]);
 
   // ── Backend sync ───────────────────────────────────────────
@@ -158,26 +174,34 @@ export function CartProvider({ children }) {
       }));
       dispatch({ type: 'SET_ITEMS', payload: normalized });
     } else {
+      // Backend cart is empty — keep local items but mark synced
       dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, []);
 
-  // ── Step 3: React to login/logout ─────────────────────────
+  // ── React to login/logout ──────────────────────────────────
   useEffect(() => {
     if (isAuthenticated) {
+      // User logged in — sync their cart from backend
+      // The boot useEffect already loaded their local cart by userId
       syncWithBackend();
+    } else {
+      // User logged out
+      // 1. Clear in-memory cart immediately
+      dispatch({ type: 'CLEAR_CART' });
+      // 2. We do NOT wipe their cart from AsyncStorage
+      //    It's saved under their userId key so the next user
+      //    (guest or different account) gets a clean slate automatically
     }
   }, [isAuthenticated, syncWithBackend]);
 
   // ── ADD TO CART ────────────────────────────────────────────
   const addToCart = useCallback(async (product, quantity = 1) => {
-    // How many of this product are already in the cart
     const existing = itemsRef.current.find(
       (i) => i.productId === product._id
     );
     const currentQty = existing ? existing.quantity : 0;
 
-    // Block if adding would exceed available stock
     if (currentQty + quantity > product.stock) {
       return {
         success: false,
@@ -207,13 +231,8 @@ export function CartProvider({ children }) {
   const updateQuantity = useCallback(async (productId, quantity) => {
     if (quantity < 1) return;
 
-    // Find the item to check its stock limit
     const item = itemsRef.current.find((i) => i.productId === productId);
-
-    // Block if new quantity exceeds stock
-    if (item && quantity > item.stock) {
-      return;
-    }
+    if (item && quantity > item.stock) return;
 
     dispatch({ type: 'UPDATE_QUANTITY', payload: { productId, quantity } });
 
@@ -234,6 +253,7 @@ export function CartProvider({ children }) {
   // ── CLEAR CART ─────────────────────────────────────────────
   const clearCart = useCallback(async () => {
     dispatch({ type: 'CLEAR_CART' });
+    await removeCartFromStorage(userIdRef.current);
 
     if (isAuthenticated) {
       await clearBackendCart();
@@ -242,7 +262,9 @@ export function CartProvider({ children }) {
 
   // ── Derived values ─────────────────────────────────────────
   const totalItems = state.items.reduce((sum, i) => sum + i.quantity, 0);
-  const totalPrice = state.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const totalPrice = state.items.reduce(
+    (sum, i) => sum + i.price * i.quantity, 0
+  );
 
   return (
     <CartContext.Provider

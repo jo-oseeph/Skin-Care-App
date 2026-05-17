@@ -36,7 +36,7 @@ function authReducer(state, action) {
       };
     case 'LOGIN_SUCCESS':
       return {
-        ...state,
+        ...state,  
         user: action.payload.user,
         token: action.payload.token,
         isAuthenticated: true,
