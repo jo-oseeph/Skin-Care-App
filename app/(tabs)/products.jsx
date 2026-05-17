@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,11 +12,13 @@ import {
   StatusBar,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { getProducts } from "../../src/services/productService";
 import ProductCard from "../../src/components/common/ProductCard";
 import { colors } from "../../src/constants/colors";
+
+
 
 const CATEGORIES = [
   "All",
@@ -68,10 +70,12 @@ export default function ProductsScreen() {
     }
   }, [category, search]);
 
-  useEffect(() => {
+  useFocusEffect(
+  useCallback(() => {
     setLoading(true);
     fetchProducts().finally(() => setLoading(false));
-  }, [fetchProducts]);
+  }, [fetchProducts])
+);
 
   const onRefresh = async () => {
     setRefreshing(true);

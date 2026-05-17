@@ -19,6 +19,7 @@ import {
   removeItemFromBackend,
   clearBackendCart,
 } from '../services/cartService';
+import { getProduct } from '../services/productService';
 
 const CartContext = createContext();
 
@@ -106,40 +107,35 @@ const mergeCarts = (localItems, backendItems) => {
 
 export function CartProvider({ children }) {
   const [state, dispatch] = useReducer(cartReducer, initialState);
-
-  // Get user and auth state from AuthContext
   const { isAuthenticated, user } = useAuth();
 
-  // userId is null for guests, string ID for logged-in users
   const userId = user?.id || null;
 
-  // Ref so callbacks can read latest items without causing loops
   const itemsRef = useRef(state.items);
   useEffect(() => {
     itemsRef.current = state.items;
   }, [state.items]);
 
-  // Keep userId in a ref too so async callbacks always have the latest
   const userIdRef = useRef(userId);
   useEffect(() => {
     userIdRef.current = userId;
   }, [userId]);
 
   // ── Boot: restore cart from AsyncStorage ───────────────────
-  // We pass userId so guests and each logged-in user get their own cart
   useEffect(() => {
     const restore = async () => {
+      // Clear memory first to avoid previous user's items flashing
+      dispatch({ type: 'CLEAR_CART' });
       const saved = await getCartFromStorage(userId);
       if (saved.length > 0) {
         dispatch({ type: 'SET_ITEMS', payload: saved });
       }
     };
     restore();
-  }, [userId]); // re-runs when userId changes (login/logout)
+  }, [userId]);
 
-  // ── Save cart to AsyncStorage on every change ──────────────
+  // ── Save to AsyncStorage on every change ───────────────────
   useEffect(() => {
-    // Always save under the current user's key
     saveCartToStorage(state.items, userIdRef.current);
   }, [state.items]);
 
@@ -174,7 +170,6 @@ export function CartProvider({ children }) {
       }));
       dispatch({ type: 'SET_ITEMS', payload: normalized });
     } else {
-      // Backend cart is empty — keep local items but mark synced
       dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, []);
@@ -182,16 +177,12 @@ export function CartProvider({ children }) {
   // ── React to login/logout ──────────────────────────────────
   useEffect(() => {
     if (isAuthenticated) {
-      // User logged in — sync their cart from backend
-      // The boot useEffect already loaded their local cart by userId
       syncWithBackend();
     } else {
-      // User logged out
-      // 1. Clear in-memory cart immediately
+      // Logged out — clear memory immediately
+      // AsyncStorage still has their cart under their userId key
+      // so it restores correctly on next login
       dispatch({ type: 'CLEAR_CART' });
-      // 2. We do NOT wipe their cart from AsyncStorage
-      //    It's saved under their userId key so the next user
-      //    (guest or different account) gets a clean slate automatically
     }
   }, [isAuthenticated, syncWithBackend]);
 
@@ -260,7 +251,49 @@ export function CartProvider({ children }) {
     }
   }, [isAuthenticated]);
 
-  // ── Derived values ─────────────────────────────────────────
+  // ── VALIDATE CART STOCK ────────────────────────────────────
+  // Fetches fresh stock for every cart item from the backend
+  // Returns array of items that have stock issues
+  const validateCartStock = useCallback(async () => {
+    const issues = [];
+
+    for (const item of itemsRef.current) {
+      try {
+        const result = await getProduct(item.productId);
+
+        if (!result.success) {
+          // Product no longer exists or is inactive
+          issues.push({
+            ...item,
+            issue:          'Product no longer available',
+            availableStock: 0,
+          });
+          continue;
+        }
+
+        const freshStock = result.product.stock;
+
+        if (freshStock === 0) {
+          issues.push({
+            ...item,
+            issue:          'Now out of stock',
+            availableStock: 0,
+          });
+        } else if (item.quantity > freshStock) {
+          issues.push({
+            ...item,
+            issue:          `Only ${freshStock} left in stock`,
+            availableStock: freshStock,
+          });
+        }
+      } catch {
+        // If we can't verify, let the backend catch it at checkout
+      }
+    }
+
+    return issues;
+  }, []);
+
   const totalItems = state.items.reduce((sum, i) => sum + i.quantity, 0);
   const totalPrice = state.items.reduce(
     (sum, i) => sum + i.price * i.quantity, 0
@@ -269,14 +302,15 @@ export function CartProvider({ children }) {
   return (
     <CartContext.Provider
       value={{
-        items:          state.items,
-        isLoading:      state.isLoading,
+        items:             state.items,
+        isLoading:         state.isLoading,
         totalItems,
         totalPrice,
         addToCart,
         updateQuantity,
         removeFromCart,
         clearCart,
+        validateCartStock, // ← exposed for checkout to use
       }}
     >
       {children}

@@ -19,22 +19,30 @@ import { colors } from "../src/constants/colors";
 export default function CheckoutScreen() {
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
-  const { items, totalItems, totalPrice, clearCart } = useCart();
 
-  const [phone, setPhone]       = useState("254");  // M-Pesa format
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState(null);
+  const {
+    items,
+    totalItems,
+    totalPrice,
+    clearCart,
+    validateCartStock,
+    updateQuantity,
+    removeFromCart,
+  } = useCart();
+
+  const [phone, setPhone]           = useState("254");
+  const [loading, setLoading]       = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [error, setError]           = useState(null);
   const [phoneError, setPhoneError] = useState(null);
+  const [stockIssues, setStockIssues] = useState([]);
 
-  // ── Validate Kenyan phone number ───────────────────────────
+  // ── Phone validation ───────────────────────────────────────
   const validatePhone = (value) => {
-    // Accept: 2547XXXXXXXX or 07XXXXXXXX or 7XXXXXXXX
     const cleaned = value.replace(/\s/g, "");
-    const kenyanPhone = /^(254|0)?7\d{8}$/.test(cleaned);
-    return kenyanPhone;
+    return /^(254|0)?7\d{8}$/.test(cleaned);
   };
 
-  // Normalize to 2547XXXXXXXX format
   const formatPhone = (value) => {
     const cleaned = value.replace(/\s/g, "");
     if (cleaned.startsWith("0")) return "254" + cleaned.slice(1);
@@ -42,26 +50,36 @@ export default function CheckoutScreen() {
     return cleaned;
   };
 
+  // ── Place order ────────────────────────────────────────────
   const handlePlaceOrder = async () => {
     setError(null);
     setPhoneError(null);
+    setStockIssues([]);
 
     if (!validatePhone(phone)) {
       setPhoneError("Enter a valid Kenyan number e.g. 0712345678");
       return;
     }
 
+    // Step 1 — check fresh stock for every cart item
+    setValidating(true);
+    const issues = await validateCartStock();
+    setValidating(false);
+
+    if (issues.length > 0) {
+      // Show stock issues — user must resolve before ordering
+      setStockIssues(issues);
+      return;
+    }
+
+    // Step 2 — create order on backend
     setLoading(true);
-
-    const formattedPhone = formatPhone(phone);
-    const result = await createOrder(formattedPhone);
-
+    const result = await createOrder(formatPhone(phone));
     setLoading(false);
 
     if (result.success) {
-      // Clear local cart — backend already cleared it
+      // Backend cleared cart in DB — clear local cart too
       clearCart();
-      // Navigate to order confirmation
       router.replace(`/order-confirmation/${result.data._id}`);
     } else {
       setError(result.message);
@@ -93,6 +111,63 @@ export default function CheckoutScreen() {
         ]}
         keyboardShouldPersistTaps="handled"
       >
+
+        {/* ── Stock issues — shown when cart has stale stock ── */}
+        {stockIssues.length > 0 && (
+          <View style={styles.stockIssuesCard}>
+            <View style={styles.stockIssuesHeader}>
+              <Ionicons name="warning-outline" size={18} color="#F59E0B" />
+              <Text style={styles.stockIssuesTitle}>
+                Stock has changed
+              </Text>
+            </View>
+            <Text style={styles.stockIssuesSub}>
+              Some items are no longer available in the quantity you selected.
+              Please resolve before placing your order.
+            </Text>
+
+            {stockIssues.map((issue) => (
+              <View key={issue.productId} style={styles.stockIssueRow}>
+                <View style={styles.stockIssueLeft}>
+                  <Text style={styles.stockIssueName} numberOfLines={1}>
+                    {issue.name}
+                  </Text>
+                  <Text style={styles.stockIssueDetail}>{issue.issue}</Text>
+                </View>
+
+                {issue.availableStock > 0 ? (
+                  // Reduce to available stock
+                  <TouchableOpacity
+                    style={styles.fixBtn}
+                    onPress={() => {
+                      updateQuantity(issue.productId, issue.availableStock);
+                      setStockIssues((prev) =>
+                        prev.filter((i) => i.productId !== issue.productId)
+                      );
+                    }}
+                  >
+                    <Text style={styles.fixBtnText}>
+                      Keep {issue.availableStock}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  // Remove item entirely
+                  <TouchableOpacity
+                    style={styles.removeBtn}
+                    onPress={() => {
+                      removeFromCart(issue.productId);
+                      setStockIssues((prev) =>
+                        prev.filter((i) => i.productId !== issue.productId)
+                      );
+                    }}
+                  >
+                    <Text style={styles.removeBtnText}>Remove</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* ── Order summary ── */}
         <Text style={styles.sectionTitle}>Order Summary</Text>
@@ -130,11 +205,9 @@ export default function CheckoutScreen() {
           </View>
         </View>
 
-        {/* ── Payment section ── */}
+        {/* ── Payment ── */}
         <Text style={styles.sectionTitle}>Payment</Text>
         <View style={styles.card}>
-
-          {/* M-Pesa badge */}
           <View style={styles.paymentMethod}>
             <View style={styles.mpesaBadge}>
               <Text style={styles.mpesaText}>M-PESA</Text>
@@ -149,7 +222,6 @@ export default function CheckoutScreen() {
 
           <View style={styles.cardDivider} />
 
-          {/* Phone input */}
           <Text style={styles.inputLabel}>M-Pesa Phone Number</Text>
           <View style={[
             styles.inputRow,
@@ -182,7 +254,7 @@ export default function CheckoutScreen() {
           )}
         </View>
 
-        {/* ── Note about payment ── */}
+        {/* ── Info note ── */}
         <View style={styles.noteCard}>
           <Ionicons
             name="information-circle-outline"
@@ -190,30 +262,23 @@ export default function CheckoutScreen() {
             color={colors.primary}
           />
           <Text style={styles.noteText}>
-            Your order will be placed immediately. M-Pesa payment integration
-            coming soon — you will be contacted to complete payment.
+            Your order will be placed immediately. M-Pesa payment
+            integration coming soon — you will be contacted to complete payment.
           </Text>
         </View>
 
-        {/* Server error */}
+        {/* ── Server error ── */}
         {error ? (
           <View style={styles.errorCard}>
-            <Ionicons
-              name="alert-circle-outline"
-              size={16}
-              color={colors.error}
-            />
+            <Ionicons name="alert-circle-outline" size={16} color={colors.error} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
 
       </ScrollView>
 
-      {/* ── Place order button — fixed at bottom ── */}
-      <View style={[
-        styles.bottomBar,
-        { paddingBottom: insets.bottom + 16 },
-      ]}>
+      {/* ── Bottom bar ── */}
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         <View style={styles.bottomTotal}>
           <Text style={styles.bottomTotalLabel}>Total</Text>
           <Text style={styles.bottomTotalValue}>
@@ -222,17 +287,26 @@ export default function CheckoutScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.placeOrderBtn, loading && styles.placeOrderBtnDisabled]}
+          style={[
+            styles.placeOrderBtn,
+            (loading || validating) && styles.placeOrderBtnDisabled,
+          ]}
           onPress={handlePlaceOrder}
-          disabled={loading}
+          disabled={loading || validating}
           activeOpacity={0.88}
         >
-          {loading ? (
+          {loading || validating ? (
             <ActivityIndicator color={colors.white} size="small" />
           ) : (
             <>
-              <Ionicons name="checkmark-circle-outline" size={18} color={colors.white} />
-              <Text style={styles.placeOrderText}>Place Order</Text>
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={18}
+                color={colors.white}
+              />
+              <Text style={styles.placeOrderText}>
+                {validating ? "Checking stock..." : "Place Order"}
+              </Text>
             </>
           )}
         </TouchableOpacity>
@@ -247,8 +321,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-
-  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -270,8 +342,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.primary,
   },
-
-  // Content
   content: {
     paddingHorizontal: 20,
     paddingTop: 8,
@@ -283,8 +353,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: -8,
   },
-
-  // Cards
   card: {
     backgroundColor: colors.card,
     borderRadius: 16,
@@ -297,8 +365,6 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: colors.border,
   },
-
-  // Order items
   orderItem: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -317,185 +383,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   orderItemQty: {
-    fontSize: 12,
-    color: colors.textMuted,
-    backgroundColor: colors.background,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  orderItemPrice: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  freeText: {
     fontSize: 13,
-    fontWeight: "600",
-    color: colors.success,
-  },
-  totalLabel: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  totalValue: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: colors.primary,
-  },
-
-  // Payment method
-  paymentMethod: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  mpesaBadge: {
-    backgroundColor: "#00A651",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  mpesaText: {
-    color: colors.white,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  paymentMethodTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  paymentMethodSub: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 1,
-  },
-
-  // Phone input
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: "600",
     color: colors.textSecondary,
-    marginBottom: -4,
-  },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: colors.background,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 12,
-    height: 48,
-  },
-  inputRowError: {
-    borderColor: colors.error,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: colors.text,
-    paddingVertical: 0,
-  },
-  fieldError: {
-    fontSize: 12,
-    color: colors.error,
-    marginTop: -4,
-  },
-  inputHint: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: -4,
-  },
-
-  // Note card
-  noteCard: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    backgroundColor: colors.accent,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.accentDark,
-  },
-  noteText: {
-    fontSize: 13,
-    color: colors.primary,
-    lineHeight: 19,
-    flex: 1,
-  },
-
-  // Error card
-  errorCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#FEF2F2",
-    borderRadius: 10,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#FECACA",
-  },
-  errorText: {
-    fontSize: 13,
-    color: colors.error,
-    flex: 1,
-  },
-
-  // Bottom bar
-  bottomBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.card,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 16,
-  },
-  bottomTotal: {
-    gap: 2,
-  },
-  bottomTotalLabel: {
-    fontSize: 12,
-    color: colors.textMuted,
-  },
-  bottomTotalValue: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: colors.primary,
-  },
-  placeOrderBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  placeOrderBtnDisabled: {
-    opacity: 0.7,
-  },
-  placeOrderText: {
-    color: colors.white,
-    fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "400",
   },
 });
