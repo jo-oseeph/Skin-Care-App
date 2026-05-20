@@ -1,8 +1,8 @@
-import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { View, Text } from 'react-native';
-import { colors } from '../../src/constants/colors';
-import { useCart } from '../../src/context/CartContext';
+import { Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { View, Text } from "react-native";
+import { colors } from "../../src/constants/colors";
+import { useCart } from "../../src/context/CartContext";
 
 // Basic tab icon used by Home, Products, Profile
 function TabIcon({ name, color, size }) {
@@ -16,30 +16,34 @@ function CartIcon({ color, size, focused }) {
   return (
     <View>
       <Ionicons
-        name={focused ? 'bag' : 'bag-outline'}
+        name={focused ? "bag" : "bag-outline"}
         size={size}
         color={color}
       />
       {/* Only render the badge when there are items in the cart */}
       {totalItems > 0 && (
-        <View style={{
-          position: 'absolute',
-          top: -4,
-          right: -6,
-          backgroundColor: colors.primary,
-          borderRadius: 8,
-          minWidth: 16,
-          height: 16,
-          justifyContent: 'center',
-          alignItems: 'center',
-          paddingHorizontal: 3,
-        }}>
-          <Text style={{
-            color: colors.white,
-            fontSize: 9,
-            fontWeight: '700',
-          }}>
-            {totalItems > 99 ? '99+' : totalItems}
+        <View
+          style={{
+            position: "absolute",
+            top: -4,
+            right: -6,
+            backgroundColor: colors.primary,
+            borderRadius: 8,
+            minWidth: 16,
+            height: 16,
+            justifyContent: "center",
+            alignItems: "center",
+            paddingHorizontal: 3,
+          }}
+        >
+          <Text
+            style={{
+              color: colors.white,
+              fontSize: 9,
+              fontWeight: "700",
+            }}
+          >
+            {totalItems > 99 ? "99+" : totalItems}
           </Text>
         </View>
       )}
@@ -62,17 +66,17 @@ export default function TabLayout() {
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '500',
+          fontWeight: "500",
         },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Home',
+          title: "Home",
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon
-              name={focused ? 'home' : 'home-outline'}
+              name={focused ? "home" : "home-outline"}
               color={color}
               size={size}
             />
@@ -83,10 +87,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="products"
         options={{
-          title: 'Products',
+          title: "Products",
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon
-              name={focused ? 'grid' : 'grid-outline'}
+              name={focused ? "grid" : "grid-outline"}
               color={color}
               size={size}
             />
@@ -97,7 +101,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="cart"
         options={{
-          title: 'Cart',
+          title: "Cart",
           tabBarIcon: ({ color, size, focused }) => (
             <CartIcon color={color} size={size} focused={focused} />
           ),
@@ -107,10 +111,23 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: "Profile",
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon
-              name={focused ? 'person' : 'person-outline'}
+              name={focused ? "person" : "person-outline"}
+              color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: "Orders",
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon
+              name={focused ? "receipt" : "receipt-outline"}
               color={color}
               size={size}
             />
