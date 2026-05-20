@@ -1,30 +1,30 @@
 export const colors = {
-  // ── Brand ──────────────────────────────────────────────────
-  primary:      '#1F3D3B',   // deep forest green — buttons, active states, headers
-  primaryLight: '#2D5654',   // lighter green — pressed states
-  primaryDark:  '#152B2A',   // darker green — shadows, depth
+  // ── Brand ─────────────────────────────
+  primary: "#2B1E18",       // espresso brown
+  primarySoft: "#5A463C",   // soft brown
+  accent: "#F4B183",        // peach accent
+  accentSoft: "#FBE7DA",    // soft peach
 
-  accent:       '#F5E6E8',   // soft blush — highlights, badges, placeholders
-  accentDark:   '#E8CACE',   // deeper blush — borders on blush backgrounds
+  // ── Backgrounds ──────────────────────
+  background: "#FAF5F1",    // warm cream
+  surface: "#FFFFFF",
+  surfaceSoft: "#FFF4EC",
 
-  gold:         '#C9A96E',   // warm gold — premium badges, "New", "Featured"
-  goldLight:    '#F0E4CE',   // light gold — gold badge backgrounds
+  // ── Borders ──────────────────────────
+  border: "#F1E3D8",
 
-  // ── Backgrounds ────────────────────────────────────────────
-  background:   '#F9F4F0',   // warm parchment — main app background
-  card:         '#FFFFFF',   // pure white — cards pop off the parchment bg
-  inputBg:      '#F5F0EB',   // slightly deeper parchment — input fields
+  // ── Text ─────────────────────────────
+  text: "#2B1E18",
+  textSecondary: "#7A685D",
+  textMuted: "#B7A79B",
 
-  // ── Borders ────────────────────────────────────────────────
-  border:       '#EDE4DC',   // warm sand border — visible but soft
+  // ── Semantic ─────────────────────────
+  white: "#FFFFFF",
+  black: "#000000",
+  success: "#5E8B7E",
+  error: "#D96C6C",
 
-  // ── Text ───────────────────────────────────────────────────
-  text:          '#1A1A1A',  // near black — main text
-  textSecondary: '#5C5047',  // warm brown-gray — labels, subtitles
-  textMuted:     '#9C8F86',  // warm muted — placeholders, hints
-
-  // ── Semantic ───────────────────────────────────────────────
-  white:   '#FFFFFF',
-  error:   '#C0392B',        // warm red
-  success: '#1F3D3B',        // reuse primary green for success
+  // ── Skeletons ────────────────────────
+  skeleton: "#F3E8DF",
+  skeletonHighlight: "#FAF5F1",
 };
