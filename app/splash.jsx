@@ -33,43 +33,47 @@ export default function SplashScreen() {
       {/* Overlay */}
       <LinearGradient
         colors={[
-          "rgba(250,245,241,0.1)",
-          "rgba(250,245,241,0.6)",
-          "#FAF5F1",
+          "rgba(246,221,207,0.10)",
+          "rgba(246,221,207,0.55)",
+          "#F6DDCF",
         ]}
         style={styles.overlay}
       />
 
       {/* Content */}
       <View style={styles.content}>
+        {/* TOP BRAND */}
         <Animated.View entering={FadeIn.delay(200)}>
           <Text style={styles.logo}>LUMERA</Text>
-          <Text style={styles.subLogo}>SKINCARE</Text>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(400).springify()}>
+        {/* CENTER IMAGE */}
+        <Animated.View
+          entering={FadeInDown.delay(350).springify()}
+          style={styles.imageWrap}
+        >
+          <Image
+            source={{
+              uri: "https://images.unsplash.com/photo-1612810436541-336d4a5a2c8f?q=80&w=1200&auto=format&fit=crop",
+            }}
+            style={styles.productImage}
+            contentFit="contain"
+          />
+        </Animated.View>
+
+        {/* BOTTOM */}
+        <Animated.View entering={FadeInDown.delay(600)}>
           <Text style={styles.title}>
-            Glow Naturally,{"\n"}Feel Beautiful
+            Reveal Your Natural Glow
           </Text>
 
-          <Text style={styles.description}>
-            Premium skincare products crafted to nourish,
-            hydrate and reveal your natural beauty.
-          </Text>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(700).springify()}>
           <TouchableOpacity
             activeOpacity={0.9}
             style={styles.button}
             onPress={() => router.replace("/(tabs)/home")}
           >
-            <Text style={styles.buttonText}>Get Started</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity activeOpacity={0.8}>
-            <Text style={styles.explore}>
-              Explore Products
+            <Text style={styles.buttonText}>
+              Get Started
             </Text>
           </TouchableOpacity>
         </Animated.View>
@@ -85,8 +89,8 @@ const styles = StyleSheet.create({
   },
 
   image: {
-    width: width,
-    height: height,
+    width,
+    height,
     position: "absolute",
   },
 
@@ -96,67 +100,52 @@ const styles = StyleSheet.create({
 
   content: {
     flex: 1,
-    justifyContent: "flex-end",
-    paddingHorizontal: 24,
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 70,
     paddingBottom: 60,
+    paddingHorizontal: 24,
   },
 
   logo: {
-    fontSize: 34,
-    color: colors.primary,
-    fontWeight: "700",
+    fontSize: 28,
     letterSpacing: 6,
-    textAlign: "center",
+    fontWeight: "700",
+    color: colors.text,
   },
 
-  subLogo: {
-    textAlign: "center",
-    color: colors.textSecondary,
-    letterSpacing: 4,
-    marginTop: 4,
-    marginBottom: 40,
-    fontSize: 12,
+  imageWrap: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  productImage: {
+    width: 280,
+    height: 280,
   },
 
   title: {
-    fontSize: 42,
-    lineHeight: 50,
-    color: colors.text,
+    fontSize: 22,
     fontWeight: "600",
+    color: colors.text,
+    textAlign: "center",
     marginBottom: 18,
   },
 
-  description: {
-    fontSize: 15,
-    lineHeight: 26,
-    color: colors.textSecondary,
-    marginBottom: 38,
-  },
-
   button: {
-    backgroundColor: colors.primary,
-    height: 60,
+    width: width * 0.85,
+    height: 58,
     borderRadius: 999,
+    backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
-
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 5,
   },
 
   buttonText: {
     color: colors.white,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-
-  explore: {
-    textAlign: "center",
-    marginTop: 22,
-    color: colors.textSecondary,
     fontSize: 15,
-    fontWeight: "500",
+    fontWeight: "600",
+    letterSpacing: 0.5,
   },
 });

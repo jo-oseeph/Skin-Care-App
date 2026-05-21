@@ -1,30 +1,32 @@
 export const colors = {
   // ── Brand ─────────────────────────────
-  primary: "#2B1E18",       // espresso brown
-  primarySoft: "#5A463C",   // soft brown
-  accent: "#F4B183",        // peach accent
-  accentSoft: "#FBE7DA",    // soft peach
+  primary: "#2A160F",       // dark chocolate button
+  primarySoft: "#4A2A20",
 
   // ── Backgrounds ──────────────────────
-  background: "#FAF5F1",    // warm cream
-  surface: "#FFFFFF",
-  surfaceSoft: "#FFF4EC",
+  background: "#F6DDCF",    // exact peach nude tone
+  card: "#FFF6F1",
+  surface: "#FBEAE0",
+
+  // ── Accent ───────────────────────────
+  accent: "#F3C3A7",
+  accentSoft: "#F9E5D9",
 
   // ── Borders ──────────────────────────
-  border: "#F1E3D8",
+  border: "#EFD3C3",
 
   // ── Text ─────────────────────────────
-  text: "#2B1E18",
-  textSecondary: "#7A685D",
-  textMuted: "#B7A79B",
+  text: "#2A160F",
+  textSecondary: "#8A6D60",
+  textMuted: "#B89E91",
 
   // ── Semantic ─────────────────────────
   white: "#FFFFFF",
   black: "#000000",
-  success: "#5E8B7E",
-  error: "#D96C6C",
+  success: "#6E8B6D",
+  error: "#D46A6A",
 
-  // ── Skeletons ────────────────────────
-  skeleton: "#F3E8DF",
-  skeletonHighlight: "#FAF5F1",
+  // ── Skeleton ─────────────────────────
+  skeleton: "#F3D9CB",
+  skeletonHighlight: "#FAEEE8",
 };
