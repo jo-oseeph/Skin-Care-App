@@ -33,7 +33,7 @@ export default function SplashScreen() {
       {/* Overlay */}
       <LinearGradient
         colors={[
-          "rgba(246,221,207,0.10)",
+          "#F6DDCF",
           "rgba(246,221,207,0.55)",
           "#F6DDCF",
         ]}
