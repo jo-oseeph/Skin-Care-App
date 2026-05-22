@@ -24,26 +24,23 @@ import { colors } from "../../src/constants/colors";
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 52) / 2;
 
-// Professional skincare/cosmetics banner — warm amber/nude flat-lay
 const BANNER_IMAGE =
   "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?q=80&w=1400&auto=format&fit=crop";
 
+// Structurally sound categories array matching what the Pill component actually needs
 const CATEGORIES = [
-  "All",
-  "cleanser",
-  "serum",
-  "moisturizer",
-  "sunscreen",
-  "toner",
-  "exfoliant",
-  "mask",
-  "eye_cream",
-  "spot_treatment",
-  "oil",
+  { id: "All", label: "All", icon: "apps-outline" },
+  { id: "cleanser", label: "Cleanser", icon: "water-outline" },
+  { id: "serum", label: "Serum", icon: "flask-outline" },
+  { id: "moisturizer", label: "Moisturizer", icon: "leaf-outline" },
+  { id: "sunscreen", label: "Sunscreen", icon: "sunny-outline" },
+  { id: "toner", label: "Toner", icon: "color-filter-outline" },
+  { id: "exfoliant", label: "Exfoliant", icon: "sparkles-outline" },
+  { id: "mask", label: "Mask", icon: "happy-outline" },
+  { id: "eye_cream", label: "Eye Cream", icon: "eye-outline" },
+  { id: "spot_treatment", label: "Spot Care", icon: "medical-outline" },
+  { id: "oil", label: "Oil", icon: "water-outline" },
 ];
-
-
-// Category Pill
 
 function CategoryPill({ item, active, onPress }) {
   return (
@@ -66,9 +63,6 @@ function CategoryPill({ item, active, onPress }) {
   );
 }
 
-// ─────────────────────────────────────────────
-// Product Card
-// ─────────────────────────────────────────────
 function ProductCard({ product, onPress }) {
   const imageUri =
     product.images?.[0] ||
@@ -80,7 +74,6 @@ function ProductCard({ product, onPress }) {
       style={styles.card}
       onPress={onPress}
     >
-      {/* Image */}
       <View style={styles.cardImageBox}>
         <Image
           source={{ uri: imageUri }}
@@ -88,18 +81,14 @@ function ProductCard({ product, onPress }) {
           resizeMode="cover"
         />
       </View>
-
-      {/* Content */}
       <View style={styles.cardBody}>
         <Text numberOfLines={1} style={styles.cardName}>
           {product.name}
         </Text>
-
         <View style={styles.cardFooter}>
           <Text style={styles.cardPrice}>
-            ${product.price}
+            KSh {product.price.toLocaleString()}
           </Text>
-
           <TouchableOpacity
             style={styles.cardCta}
             activeOpacity={0.85}
@@ -116,9 +105,6 @@ function ProductCard({ product, onPress }) {
   );
 }
 
-// ─────────────────────────────────────────────
-// Home Screen
-// ─────────────────────────────────────────────
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -128,13 +114,21 @@ export default function HomeScreen() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [loading, setLoading] = useState(true);
 
+  // Re-fetch when activeCategory changes
   useEffect(() => {
     loadProducts();
-  }, []);
+  }, [activeCategory]);
 
   const loadProducts = async () => {
     setLoading(true);
-    const result = await getProducts({ sortBy: "newest", limit: 12 });
+    const params = { sortBy: "newest", limit: 12 };
+    
+    // Append category to network request if not "All"
+    if (activeCategory !== "All") {
+      params.category = activeCategory;
+    }
+
+    const result = await getProducts(params);
     if (result.success) setProducts(result.products);
     setLoading(false);
   };
@@ -142,10 +136,8 @@ export default function HomeScreen() {
   const handleProductPress = (product) =>
     router.push(`/product/${product._id}`);
 
-  // ── List Header ────────────────────────────
   const ListHeader = () => (
     <View>
-      {/* ── Top Bar ────────────────────────── */}
       <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={styles.topGreeting}>Good morning ✦</Text>
@@ -171,19 +163,15 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* ── Banner ─────────────────────────── */}
       <TouchableOpacity
         activeOpacity={0.92}
         style={styles.banner}
       >
-        {/* Background image */}
         <Image
           source={{ uri: BANNER_IMAGE }}
           style={styles.bannerImage}
           resizeMode="cover"
         />
-
-        {/* Gradient overlay left-to-right for readability */}
         <LinearGradient
           colors={[
             "rgba(42,22,15,0.82)",
@@ -194,17 +182,13 @@ export default function HomeScreen() {
           end={{ x: 1, y: 0.5 }}
           style={StyleSheet.absoluteFill}
         />
-
-        {/* Text content */}
         <View style={styles.bannerContent}>
           <View style={styles.bannerTag}>
             <Text style={styles.bannerTagText}>✦ Spring Edit</Text>
           </View>
-
           <Text style={styles.bannerTitle}>
             Crafted for{"\n"}Radiant Skin
           </Text>
-
           <TouchableOpacity style={styles.bannerBtn}>
             <Text style={styles.bannerBtnText}>Shop Now</Text>
             <Ionicons
@@ -216,7 +200,6 @@ export default function HomeScreen() {
         </View>
       </TouchableOpacity>
 
-      {/* ── Categories ─────────────────────── */}
       <View style={styles.sectionRow}>
         <Text style={styles.sectionTitle}>Collections</Text>
         <TouchableOpacity>
@@ -239,9 +222,10 @@ export default function HomeScreen() {
         ))}
       </ScrollView>
 
-      {/* ── Products header ─────────────────── */}
       <View style={[styles.sectionRow, { marginTop: 8 }]}>
-        <Text style={styles.sectionTitle}>New Arrivals</Text>
+        <Text style={styles.sectionTitle}>
+          {activeCategory === "All" ? "New Arrivals" : catLabel(activeCategory)}
+        </Text>
         <TouchableOpacity>
           <Text style={styles.seeAll}>See all</Text>
         </TouchableOpacity>
@@ -249,8 +233,12 @@ export default function HomeScreen() {
     </View>
   );
 
-  //Loading 
-  if (loading) {
+  // Helper to get category title for the header
+  const catLabel = (id) => {
+    return CATEGORIES.find(c => c.id === id)?.label || "Products";
+  };
+
+  if (loading && products.length === 0) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -281,27 +269,20 @@ export default function HomeScreen() {
   );
 }
 
-// ─────────────────────────────────────────────
-// Styles
-// ─────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,   // #F6DDCF warm peach
+    backgroundColor: colors.background, 
   },
-
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: colors.background,
   },
-
   listContent: {
     paddingBottom: 36,
   },
-
-  // ── Top Bar ────────────────────────────────
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -309,7 +290,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 22,
   },
-
   topGreeting: {
     fontSize: 12,
     fontWeight: "400",
@@ -317,31 +297,27 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: 2,
   },
-
   logo: {
     fontSize: 26,
     fontWeight: "700",
     letterSpacing: 6,
     color: colors.text,
   },
-
   topIcons: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
   },
-
   iconBtn: {
     width: 40,
     height: 40,
     borderRadius: 999,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.surface,     // #FBEAE0 warm surface
+    backgroundColor: colors.surface, 
     borderWidth: 1,
-    borderColor: colors.border,          // #EFD3C3
+    borderColor: colors.border, 
   },
-
   badge: {
     position: "absolute",
     top: 0,
@@ -349,20 +325,17 @@ const styles = StyleSheet.create({
     width: 17,
     height: 17,
     borderRadius: 999,
-    backgroundColor: colors.primary,    // #2A160F dark chocolate
+    backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1.5,
     borderColor: colors.background,
   },
-
   badgeText: {
     color: colors.background,
     fontSize: 9,
     fontWeight: "700",
   },
-
-  // ── Banner ─────────────────────────────────
   banner: {
     marginHorizontal: 20,
     height: 200,
@@ -370,13 +343,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: 30,
   },
-
   bannerImage: {
     ...StyleSheet.absoluteFillObject,
     width: "100%",
     height: "100%",
   },
-
   bannerContent: {
     position: "absolute",
     left: 0,
@@ -387,7 +358,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     gap: 12,
   },
-
   bannerTag: {
     backgroundColor: "rgba(246,221,207,0.18)",
     borderWidth: 1,
@@ -397,14 +367,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     alignSelf: "flex-start",
   },
-
   bannerTagText: {
     fontSize: 10,
     fontWeight: "500",
     letterSpacing: 1,
-    color: colors.accentSoft,            // #F9E5D9 very light peach
+    color: colors.accentSoft,
   },
-
   bannerTitle: {
     fontSize: 24,
     fontWeight: "700",
@@ -412,26 +380,22 @@ const styles = StyleSheet.create({
     color: "#F9E5D9",
     letterSpacing: 0.2,
   },
-
   bannerBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: colors.background, // #F6DDCF
+    backgroundColor: colors.background,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,
     alignSelf: "flex-start",
   },
-
   bannerBtnText: {
     fontSize: 12,
     fontWeight: "600",
     color: colors.text,
     letterSpacing: 0.3,
   },
-
-  // ── Sections ───────────────────────────────
   sectionRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -439,127 +403,105 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 16,
   },
-
   sectionTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: colors.text,
     letterSpacing: 0.2,
   },
-
   seeAll: {
     fontSize: 13,
     fontWeight: "500",
     color: colors.textSecondary,
   },
-
-  // ── Categories ─────────────────────────────
   categoriesScroll: {
     paddingHorizontal: 20,
     paddingBottom: 4,
     gap: 10,
     marginBottom: 22,
   },
-
   categoryPill: {
     alignItems: "center",
     gap: 6,
   },
-
   categoryIconCircle: {
     width: 52,
     height: 52,
     borderRadius: 999,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.surface,    // #FBEAE0
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: colors.border,         // #EFD3C3
+    borderColor: colors.border,
   },
-
   categoryIconCircleActive: {
-    backgroundColor: colors.primary,   // #2A160F dark chocolate
+    backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-
   categoryLabel: {
     fontSize: 11,
     fontWeight: "500",
     color: colors.textMuted,
     letterSpacing: 0.3,
   },
-
   categoryLabelActive: {
     color: colors.text,
     fontWeight: "600",
   },
-
-  // ── Grid ───────────────────────────────────
   row: {
     justifyContent: "space-between",
     paddingHorizontal: 20,
     marginBottom: 16,
   },
-
-  // ── Card ───────────────────────────────────
   card: {
     width: CARD_WIDTH,
-    backgroundColor: colors.card,      // #FFF6F1 warm white
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 10,
-
-    // Warm, soft shadow
     shadowColor: "#2A160F",
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
-
   cardImageBox: {
     width: "100%",
     height: 148,
-    borderRadius: 14,
+    borderRadius: 10, // mathematically aligned border radius
     overflow: "hidden",
-    backgroundColor: colors.surface,   // #FBEAE0 — shows while loading
+    backgroundColor: colors.surface,
     marginBottom: 10,
   },
-
   cardImage: {
     width: "100%",
     height: "100%",
   },
-
   cardBody: {
     paddingHorizontal: 4,
     paddingBottom: 2,
     gap: 8,
   },
-
   cardName: {
     fontSize: 13,
     fontWeight: "600",
     color: colors.text,
     letterSpacing: 0.1,
   },
-
   cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-
   cardPrice: {
     fontSize: 15,
     fontWeight: "700",
     color: colors.text,
   },
-
   cardCta: {
     width: 30,
     height: 30,
     borderRadius: 999,
-    backgroundColor: colors.primary,   // #2A160F
+    backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
   },
