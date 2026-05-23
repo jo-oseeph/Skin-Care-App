@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   },
   retryText: {
     color: colors.background,
-    fontWeight: "600",
+    fontWeight: "600", 
     fontSize: 13,
   },
 });

@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const TOKEN_KEY = 'skincare_token';
 const USER_KEY  = 'skincare_user';
 
-// ── Token ──────────────────────────────────────────────────
+// Token 
 export const saveToken = async (token) => {
   await SecureStore.setItemAsync(TOKEN_KEY, token);
 };
@@ -15,7 +15,7 @@ export const removeToken = async () => {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
 };
 
-// ── User ───────────────────────────────────────────────────
+//  User 
 export const saveUser = async (user) => {
   await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
 };
@@ -27,9 +27,7 @@ export const removeUser = async () => {
   await SecureStore.deleteItemAsync(USER_KEY);
 };
 
-// ── Cart — keyed per user ID ───────────────────────────────
-// Each user gets their own cart key: skincare_cart_userId
-// This means two users on the same device never share a cart
+// Cart — keyed per user ID 
 
 const getCartKey = (userId) => `skincare_cart_${userId}`;
 const GUEST_CART_KEY = 'skincare_cart_guest';
@@ -57,6 +55,6 @@ export const removeCartFromStorage = async (userId = null) => {
 export const clearAll = async () => {
   await removeToken();
   await removeUser();
-  // Note: we do NOT clear the cart here
+  
   // Cart is cleared per-user in CartContext when auth changes
 };

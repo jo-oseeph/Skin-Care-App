@@ -1,5 +1,5 @@
 
-export const BASE_URL = 'http://10.199.54.73:5000/api';
+export const BASE_URL = 'http://192.168.100.11:5000/api';
 
 export const ENDPOINTS = {
   login:      '/auth/login',
