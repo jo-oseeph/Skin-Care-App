@@ -37,8 +37,8 @@ export default function ProductDetailScreen() {
   const [error, setError]             = useState(null);
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity]       = useState(1);
-  const [added, setAdded]             = useState(false);   // success state
-  const [stockError, setStockError]   = useState(false);   // stock limit state
+  const [added, setAdded]             = useState(false);
+  const [stockError, setStockError]   = useState(false);
 
   const { addToCart } = useCart();
 
@@ -72,21 +72,20 @@ export default function ProductDetailScreen() {
       const result = await addToCart(product, quantity);
 
       if (result?.success === false) {
-        // Hit stock limit — flash red
         setStockError(true);
-        setTimeout(() => setStockError(false), 1500);
+        setTimeout(() => setStockError(false), 2000);
         return;
       }
 
-      // Success — flash green
       setAdded(true);
-      setTimeout(() => setAdded(false), 1500);
+      // Reset quantity to 1 after successful add to prevent accidental double-ordering
+      setQuantity(1); 
+      setTimeout(() => setAdded(false), 2000);
     } catch (err) {
       console.error("addToCart error:", err.message);
     }
   };
 
-  // ── Loading ──
   if (loading) {
     return (
       <View style={styles.fullCenter}>
@@ -95,7 +94,6 @@ export default function ProductDetailScreen() {
     );
   }
 
-  // ── Error ──
   if (error || !product) {
     return (
       <View style={styles.fullCenter}>
@@ -109,40 +107,45 @@ export default function ProductDetailScreen() {
   }
 
   const isOutOfStock = product.stock === 0;
+  // Scarcity principle: highlight low stock, standard text for normal stock
+  const stockMessage = isOutOfStock 
+    ? "Out of stock" 
+    : product.stock < 10 
+      ? `Only ${product.stock} left!` 
+      : `${product.stock} in stock`;
+
+  const imageUri = product.images?.[activeImage] || "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=800&auto=format&fit=crop";
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
 
-      {/* Floating back + heart */}
       <View style={[styles.floatingHeader, { top: insets.top + 10 }]}>
         <TouchableOpacity
-          style={styles.floatingBtn}
+          style={styles.headerIconBtn}
           onPress={() => router.back()}
-          activeOpacity={0.85}
+          activeOpacity={0.8}
         >
-          <Ionicons name="arrow-back" size={20} color={colors.primary} />
+          <Ionicons name="chevron-back" size={24} color={colors.primary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.floatingBtn} activeOpacity={0.85}>
-          <Ionicons name="heart-outline" size={20} color={colors.primary} />
+        <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.8}>
+          <Ionicons name="heart-outline" size={22} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* Scrollable content */}
       <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 70 }]}
       >
-        {/* ── Image gallery ── */}
-        <View style={styles.imageContainer}>
+        <View style={styles.showcaseContainer}>
           <Image
-            source={{ uri: product.images?.[activeImage] }}
+            source={{ uri: imageUri }}
             style={styles.mainImage}
             resizeMode="cover"
           />
-
+          
           {product.images?.length > 1 && (
             <View style={styles.dotsRow}>
               {product.images.map((_, index) => (
@@ -157,37 +160,9 @@ export default function ProductDetailScreen() {
               ))}
             </View>
           )}
-
-          {product.images?.length > 1 && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.thumbnailRow}
-            >
-              {product.images.map((img, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => setActiveImage(index)}
-                  activeOpacity={0.8}
-                >
-                  <Image
-                    source={{ uri: img }}
-                    style={[
-                      styles.thumbnail,
-                      activeImage === index && styles.thumbnailActive,
-                    ]}
-                    resizeMode="cover"
-                  />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
         </View>
 
-        {/* ── Product info card ── */}
-        <View style={styles.infoCard}>
-
-          {/* Category + stock row */}
+        <View style={styles.infoContainer}>
           <View style={styles.topRow}>
             <View style={styles.categoryBadge}>
               <Text style={styles.categoryText}>
@@ -201,92 +176,59 @@ export default function ProductDetailScreen() {
             ]}>
               <View style={[
                 styles.stockDot,
-                { backgroundColor: isOutOfStock ? colors.error : colors.success },
+                { backgroundColor: isOutOfStock ? "#E74C3C" : (product.stock < 10 ? "#F39C12" : "#2ECC71") },
               ]} />
               <Text style={[
                 styles.stockText,
-                { color: isOutOfStock ? colors.error : colors.success },
+                { color: isOutOfStock ? "#E74C3C" : (product.stock < 10 ? "#F39C12" : "#2ECC71") },
               ]}>
-                {isOutOfStock ? "Out of stock" : `${product.stock} in stock`}
+                {stockMessage}
               </Text>
             </View>
           </View>
 
-          {/* Name */}
           <Text style={styles.productName}>{product.name}</Text>
-
-          {/* Price */}
           <Text style={styles.price}>
             KSh {product.price.toLocaleString()}
           </Text>
 
-          <View style={styles.divider} />
-
-          {/* Description */}
           {product.description ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>About this product</Text>
+              <Text style={styles.sectionTitle}>Details</Text>
               <Text style={styles.description}>{product.description}</Text>
             </View>
           ) : null}
 
-          {product.description ? <View style={styles.divider} /> : null}
-
-          {/* Quantity selector */}
           {!isOutOfStock && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Quantity</Text>
-              <View style={styles.qtyRow}>
+              <View style={styles.qtyContainer}>
                 <TouchableOpacity
-                  style={[
-                    styles.qtyBtn,
-                    quantity === 1 && styles.qtyBtnDisabled,
-                  ]}
+                  style={[styles.qtyBtn, quantity === 1 && styles.qtyBtnDisabled]}
                   onPress={decreaseQty}
                   disabled={quantity === 1}
                 >
-                  <Ionicons
-                    name="remove"
-                    size={18}
-                    color={quantity === 1 ? colors.textMuted : colors.primary}
-                  />
+                  <Ionicons name="remove" size={20} color={quantity === 1 ? colors.textMuted : colors.primary} />
                 </TouchableOpacity>
 
                 <Text style={styles.qtyValue}>{quantity}</Text>
 
                 <TouchableOpacity
-                  style={[
-                    styles.qtyBtn,
-                    quantity === product.stock && styles.qtyBtnDisabled,
-                  ]}
+                  style={[styles.qtyBtn, quantity === product.stock && styles.qtyBtnDisabled]}
                   onPress={increaseQty}
                   disabled={quantity === product.stock}
                 >
-                  <Ionicons
-                    name="add"
-                    size={18}
-                    color={
-                      quantity === product.stock
-                        ? colors.textMuted
-                        : colors.primary
-                    }
-                  />
+                  <Ionicons name="add" size={20} color={quantity === product.stock ? colors.textMuted : colors.primary} />
                 </TouchableOpacity>
-
-                <Text style={styles.qtyHint}>
-                  {product.stock} available
-                </Text>
               </View>
             </View>
           )}
-
         </View>
       </ScrollView>
 
-      {/* ── Bottom bar — outside ScrollView ── */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         <View style={styles.totalCol}>
-          <Text style={styles.totalLabel}>Total</Text>
+          <Text style={styles.totalLabel}>Total Price</Text>
           <Text style={styles.totalPrice}>
             KSh {(product.price * quantity).toLocaleString()}
           </Text>
@@ -303,24 +245,28 @@ export default function ProductDetailScreen() {
           onPress={handleAddToCart}
           activeOpacity={0.85}
         >
+          {/* Use numberOfLines and adjustsFontSizeToFit to prevent UI breaking on long error messages */}
+          <Text 
+            style={styles.addToCartText}
+            numberOfLines={1} 
+            adjustsFontSizeToFit
+          >
+            {isOutOfStock ? "Out of stock"
+              : stockError  ? `Only ${product.stock} available`
+              : added       ? "Added to Cart"
+              :               "Add to Cart"}
+          </Text>
           <Ionicons
             name={
-              stockError  ? "alert-circle-outline" :
-              added       ? "checkmark" :
-                            "bag-outline"
+              stockError  ? "alert-circle" :
+              added       ? "checkmark-circle" :
+                            "arrow-forward"
             }
             size={18}
-            color={colors.white}
+            color={colors.background}
           />
-          <Text style={styles.addToCartText}>
-            {isOutOfStock ? "Out of stock"
-              : stockError  ? `Max ${product.stock} allowed`
-              : added       ? "Added!"
-              :               "Add to cart"}
-          </Text>
         </TouchableOpacity>
       </View>
-
     </View>
   );
 }
@@ -328,7 +274,7 @@ export default function ProductDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface, 
   },
   fullCenter: {
     flex: 1,
@@ -337,8 +283,7 @@ const styles = StyleSheet.create({
     gap: 12,
     backgroundColor: colors.background,
   },
-
-  // Floating buttons
+  
   floatingHeader: {
     position: "absolute",
     left: 0,
@@ -348,163 +293,153 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
   },
-  floatingBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.white,
+  headerIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.85)", 
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowRadius: 12,
     elevation: 3,
   },
 
-  // ScrollView
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 16,
+    paddingBottom: 40,
   },
 
-  // Image
-  imageContainer: {
-    backgroundColor: colors.accent,
-    paddingBottom: 16,
+  showcaseContainer: {
+    marginHorizontal: 20,
+    backgroundColor: colors.card,
+    borderRadius: 32,
+    padding: 16,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+    marginBottom: 24,
   },
   mainImage: {
-    width,
-    height: width * 0.9,
+    width: "100%",
+    height: width * 0.85,
+    borderRadius: 24,
   },
   dotsRow: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 6,
-    marginTop: 12,
+    alignItems: "center",
+    gap: 8,
+    marginTop: 16,
+    marginBottom: 4,
   },
   dot: {
     width: 6,
     height: 6,
-    borderRadius: 3,
+    borderRadius: 999,
     backgroundColor: colors.border,
   },
   dotActive: {
-    width: 18,
+    width: 20,
     backgroundColor: colors.primary,
   },
-  thumbnailRow: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    gap: 10,
-  },
-  thumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  thumbnailActive: {
-    borderColor: colors.primary,
-  },
 
-  // Info card
-  infoCard: {
-    backgroundColor: colors.card,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -20,
+  infoContainer: {
     paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 24,
-    minHeight: 300,
   },
   topRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   categoryBadge: {
-    backgroundColor: colors.accent,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
+    backgroundColor: "rgba(246,221,207,0.3)", 
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(246,221,207,0.8)",
   },
   categoryText: {
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "600",
     color: colors.primary,
     textTransform: "uppercase",
-    letterSpacing: 0.6,
+    letterSpacing: 1,
   },
   stockBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    backgroundColor: colors.background,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.card,
   },
   stockDot: {
     width: 6,
     height: 6,
-    borderRadius: 3,
+    borderRadius: 999,
   },
   stockText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
   },
   productName: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: "700",
     color: colors.text,
-    lineHeight: 30,
+    lineHeight: 34,
+    letterSpacing: -0.5,
     marginBottom: 8,
   },
   price: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "800",
     color: colors.primary,
-    marginBottom: 20,
+    marginBottom: 32,
   },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginBottom: 20,
-  },
+
   section: {
-    marginBottom: 20,
+    marginBottom: 28,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: "700",
-    color: colors.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: 10,
+    color: colors.text,
+    marginBottom: 12,
   },
   description: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.textSecondary,
-    lineHeight: 22,
+    lineHeight: 24,
+    fontWeight: "400",
   },
-  qtyRow: {
+
+  qtyContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
+    backgroundColor: colors.card,
+    borderRadius: 999,
+    alignSelf: "flex-start",
+    padding: 6,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
   },
   qtyBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -515,64 +450,64 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: colors.text,
-    minWidth: 24,
+    minWidth: 40,
     textAlign: "center",
   },
-  qtyHint: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginLeft: 4,
-  },
 
-  // Bottom bar
   bottomBar: {
     backgroundColor: colors.card,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingTop: 20,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 10,
   },
   totalCol: {
-    gap: 2,
+    gap: 4,
   },
   totalLabel: {
     fontSize: 12,
     color: colors.textMuted,
-    fontWeight: "500",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   totalPrice: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: "800",
     color: colors.primary,
   },
   addToCartBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 12,
     backgroundColor: colors.primary,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 14,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 999,
+    maxWidth: "60%", // Prevent button from blowing out the layout
   },
   addToCartBtnDisabled: {
     backgroundColor: colors.textMuted,
   },
   addToCartBtnSuccess: {
-    backgroundColor: colors.success,
+    backgroundColor: "#2ECC71", 
   },
   addToCartBtnError: {
-    backgroundColor: colors.error,
+    backgroundColor: "#E74C3C", 
   },
   addToCartText: {
     fontSize: 15,
     fontWeight: "700",
-    color: colors.white,
+    color: colors.background,
   },
-
-  // Error state
   errorText: {
     fontSize: 14,
     color: colors.textSecondary,
@@ -583,6 +518,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     backgroundColor: colors.primary,
     borderRadius: 8,
+    marginTop: 10,
   },
   backBtnText: {
     color: colors.white,
