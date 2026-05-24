@@ -7,24 +7,27 @@ import {
   ActivityIndicator,
   StyleSheet,
   StatusBar,
+  Dimensions,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { useAuth } from "../../src/context/AuthContext";
 import { getMyOrders } from "../../src/services/orderService";
 import { colors } from "../../src/constants/colors";
 
-// ── Status config ──────────────────────────────────────────
+const { height } = Dimensions.get("window");
+
+// ── Status Config (Aligned with Checkout Logic) ─────────────
 const STATUS = {
-  pending:   { label: "Pending",   color: "#92400E", bg: "#FEF3C7", icon: "time-outline" },
-  paid:      { label: "Paid",      color: "#065F46", bg: "#D1FAE5", icon: "checkmark-circle-outline" },
-  delivered: { label: "Delivered", color: colors.primary, bg: colors.accent, icon: "bag-check-outline" },
-  cancelled: { label: "Cancelled", color: colors.error, bg: "#FEE2E2", icon: "close-circle-outline" },
+  pending:   { label: "Awaiting Payment", color: "#F39C12", bg: "rgba(243, 156, 18, 0.1)", icon: "time" },
+  paid:      { label: "Processing",       color: "#2ECC71", bg: "rgba(46, 204, 113, 0.1)", icon: "checkmark-circle" },
+  delivered: { label: "Delivered",        color: colors.primary, bg: "rgba(42,22,15,0.05)", icon: "cube" },
+  cancelled: { label: "Cancelled",        color: "#E74C3C", bg: "rgba(231, 76, 60, 0.1)", icon: "close-circle" },
 };
 
-// ── Single order card ──────────────────────────────────────
+// ── Single Order Card ──────────────────────────────────────
 function OrderCard({ order, onPress }) {
   const status = STATUS[order.status] || STATUS.pending;
 
@@ -34,30 +37,26 @@ function OrderCard({ order, onPress }) {
     year:  "numeric",
   });
 
-  // Show first 2 item names, then "+X more" if there are more
-  const itemPreview = order.items
-    .slice(0, 2)
-    .map((i) => i.name)
-    .join(", ");
+  const itemPreview = order.items.slice(0, 2).map((i) => i.name).join(", ");
   const moreCount = order.items.length - 2;
 
   return (
     <TouchableOpacity
       style={styles.orderCard}
       onPress={onPress}
-      activeOpacity={0.88}
+      activeOpacity={0.85}
     >
-      {/* Top row — order ID + status badge */}
+      {/* Top row */}
       <View style={styles.cardTop}>
         <View>
           <Text style={styles.orderId}>
-            #{order._id.slice(-8).toUpperCase()}
+            Order #{order._id.slice(-8).toUpperCase()}
           </Text>
           <Text style={styles.orderDate}>{date}</Text>
         </View>
 
         <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-          <Ionicons name={status.icon} size={12} color={status.color} />
+          <Ionicons name={status.icon} size={14} color={status.color} />
           <Text style={[styles.statusText, { color: status.color }]}>
             {status.label}
           </Text>
@@ -67,19 +66,22 @@ function OrderCard({ order, onPress }) {
       <View style={styles.cardDivider} />
 
       {/* Items preview */}
-      <Text style={styles.itemPreview} numberOfLines={1}>
-        {itemPreview}
-        {moreCount > 0 ? ` +${moreCount} more` : ""}
-      </Text>
-
-      {/* Bottom row — item count + total */}
-      <View style={styles.cardBottom}>
-        <View style={styles.itemCountBadge}>
-          <Text style={styles.itemCountText}>
-            {order.items.length} {order.items.length === 1 ? "item" : "items"}
+      <View style={styles.previewRow}>
+        <View style={styles.previewTextContainer}>
+          <Text style={styles.itemPreview} numberOfLines={1}>
+            {itemPreview}
           </Text>
+          {moreCount > 0 && (
+            <Text style={styles.moreCountText}>+{moreCount} more</Text>
+          )}
         </View>
+      </View>
 
+      {/* Bottom row */}
+      <View style={styles.cardBottom}>
+        <Text style={styles.itemCountText}>
+          {order.items.length} {order.items.length === 1 ? "Item" : "Items"}
+        </Text>
         <Text style={styles.orderTotal}>
           KSh {order.totalAmount.toLocaleString()}
         </Text>
@@ -88,7 +90,7 @@ function OrderCard({ order, onPress }) {
   );
 }
 
-// ── Orders screen ──────────────────────────────────────────
+// ── Orders Screen ──────────────────────────────────────────
 export default function OrdersScreen() {
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
@@ -98,64 +100,64 @@ export default function OrdersScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
 
+  // Extracted fetch logic so it can be called by hooks AND buttons safely
+  const fetchOrders = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    setLoading(true);
+    const result = await getMyOrders();
+    if (result.success) {
+      setOrders(result.data);
+      setError(null);
+    } else {
+      setError(result.message || "Failed to load orders.");
+    }
+    setLoading(false);
+  }, [isAuthenticated]);
+
   // Refetch every time this tab comes into focus
   useFocusEffect(
     useCallback(() => {
-      if (!isAuthenticated) return;
-
-      const load = async () => {
-        setLoading(true);
-        const result = await getMyOrders();
-        if (result.success) {
-          setOrders(result.data);
-          setError(null);
-        } else {
-          setError(result.message);
-        }
-        setLoading(false);
-      };
-
-      load();
-    }, [isAuthenticated])
+      fetchOrders();
+    }, [fetchOrders])
   );
 
-  // ── Guest view ─────────────────────────────────────────────
+  // ── Guest View ──
   if (!isAuthenticated) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-
+        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>My Orders</Text>
+          <Text style={styles.headerTitle}>Order History</Text>
         </View>
 
-        <View style={styles.centered}>
-          <View style={styles.emptyIconCircle}>
-            <Ionicons name="receipt-outline" size={40} color={colors.primary} />
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyVisual}>
+            <Ionicons name="receipt-outline" size={48} color={colors.primary} />
           </View>
           <Text style={styles.emptyTitle}>Sign in to view orders</Text>
           <Text style={styles.emptySubtitle}>
-            Your order history will appear here after you sign in
+            Track your purchases and view your complete order history.
           </Text>
           <TouchableOpacity
             style={styles.signInBtn}
             onPress={() => router.push("/(auth)/login")}
             activeOpacity={0.85}
           >
-            <Text style={styles.signInBtnText}>Sign In</Text>
+            <Text style={styles.signInBtnText}>Sign In / Register</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  // ── Loading ────────────────────────────────────────────────
-  if (loading) {
+  // ── Loading State ──
+  if (loading && orders.length === 0) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>My Orders</Text>
+          <Text style={styles.headerTitle}>Order History</Text>
         </View>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -164,22 +166,23 @@ export default function OrdersScreen() {
     );
   }
 
-  // ── Error ──────────────────────────────────────────────────
-  if (error) {
+  // ── Error State ──
+  if (error && orders.length === 0) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>My Orders</Text>
+          <Text style={styles.headerTitle}>Order History</Text>
         </View>
         <View style={styles.centered}>
-          <Ionicons name="wifi-outline" size={44} color={colors.textMuted} />
+          <Ionicons name="warning-outline" size={44} color={colors.textMuted} />
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity
             style={styles.retryBtn}
-            onPress={() => useFocusEffect}
+            onPress={fetchOrders} // Correctly calling the extracted function
+            activeOpacity={0.8}
           >
-            <Text style={styles.retryText}>Try again</Text>
+            <Text style={styles.retryText}>Try Again</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -187,39 +190,39 @@ export default function OrdersScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
 
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Orders</Text>
+      {/* ── Protected Header ── */}
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <Text style={styles.headerTitle}>Order History</Text>
         {orders.length > 0 && (
           <View style={styles.countBadge}>
-            <Text style={styles.countText}>{orders.length} orders</Text>
+            <Text style={styles.countText}>{orders.length} Total</Text>
           </View>
         )}
       </View>
 
-      {/* ── Orders list ── */}
+      {/* ── Orders List ── */}
       <FlatList
         data={orders}
         keyExtractor={(item) => item._id}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
           <OrderCard
             order={item}
-            onPress={() => router.push(`/order/${item._id}`)}
+            onPress={() => router.push(`/order/${item._id}`)} // Assumes you have an order details screen
           />
         )}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <View style={styles.centered}>
-            <View style={styles.emptyIconCircle}>
-              <Ionicons name="bag-outline" size={40} color={colors.primary} />
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyVisual}>
+              <Ionicons name="bag-handle-outline" size={48} color={colors.primary} />
             </View>
             <Text style={styles.emptyTitle}>No orders yet</Text>
             <Text style={styles.emptySubtitle}>
-              Your orders will appear here after you make a purchase
+              When you make a purchase, your orders will appear here.
             </Text>
             <TouchableOpacity
               style={styles.shopBtn}
@@ -238,13 +241,13 @@ export default function OrdersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 12,
+    gap: 16,
     paddingHorizontal: 40,
   },
 
@@ -252,45 +255,46 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 14,
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    paddingBottom: 20,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "700",
-    color: colors.primary,
-    flex: 1,
+    color: colors.text,
+    letterSpacing: -0.5,
   },
   countBadge: {
-    backgroundColor: colors.accent,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
+    backgroundColor: "rgba(246,221,207,0.5)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
   countText: {
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
     color: colors.primary,
   },
 
   // List
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
-    gap: 12,
+    paddingBottom: 40,
+    gap: 16,
     flexGrow: 1,
   },
 
-  // Order card
+  // Order Card (Premium aesthetic)
   orderCard: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    gap: 10,
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 3,
   },
   cardTop: {
     flexDirection: "row",
@@ -298,126 +302,147 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   orderId: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "700",
     color: colors.text,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   orderDate: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 2,
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 4,
   },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 6,
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
   statusText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
   },
   cardDivider: {
     height: 1,
     backgroundColor: colors.border,
+    marginVertical: 14,
+  },
+  previewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  previewTextContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
   },
   itemPreview: {
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: "500",
+    flexShrink: 1,
+  },
+  moreCountText: {
     fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 18,
+    color: colors.textMuted,
+    fontStyle: "italic",
   },
   cardBottom: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  itemCountBadge: {
-    backgroundColor: colors.inputBg,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
   itemCountText: {
-    fontSize: 11,
+    fontSize: 14,
     color: colors.textSecondary,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   orderTotal: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "800",
     color: colors.primary,
   },
 
-  // Empty / guest states
-  emptyIconCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: colors.accent,
+  // Empty / Guest States
+  emptyContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 4,
+    paddingHorizontal: 40,
+    marginTop: height * 0.1, // Visual center compensation
+  },
+  emptyVisual: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.card,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: "700",
     color: colors.text,
     textAlign: "center",
+    marginBottom: 8,
   },
   emptySubtitle: {
-    fontSize: 13,
-    color: colors.textMuted,
+    fontSize: 14,
+    color: colors.textSecondary,
     textAlign: "center",
-    lineHeight: 19,
+    lineHeight: 22,
+    marginBottom: 32,
   },
   shopBtn: {
     backgroundColor: colors.primary,
-    paddingHorizontal: 28,
-    paddingVertical: 13,
-    borderRadius: 12,
-    marginTop: 4,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 999,
   },
   shopBtnText: {
-    color: colors.white,
+    color: colors.background,
     fontWeight: "700",
-    fontSize: 14,
+    fontSize: 15,
   },
   signInBtn: {
     backgroundColor: colors.primary,
-    paddingHorizontal: 36,
-    paddingVertical: 13,
-    borderRadius: 12,
-    marginTop: 4,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 999,
   },
   signInBtnText: {
-    color: colors.white,
+    color: colors.background,
     fontWeight: "700",
-    fontSize: 14,
+    fontSize: 15,
   },
 
   // Error
   errorText: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.textSecondary,
     textAlign: "center",
+    lineHeight: 22,
   },
   retryBtn: {
-    paddingHorizontal: 22,
-    paddingVertical: 9,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: 999,
+    marginTop: 8,
   },
   retryText: {
-    color: colors.white,
-    fontWeight: "600",
-    fontSize: 13,
+    color: colors.background,
+    fontWeight: "700",
+    fontSize: 14,
   },
 });
