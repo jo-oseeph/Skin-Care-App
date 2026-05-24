@@ -12,6 +12,7 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { useCart } from "../src/context/CartContext";
 import { createOrder } from "../src/services/orderService";
 import { colors } from "../src/constants/colors";
@@ -30,138 +31,124 @@ export default function CheckoutScreen() {
     removeFromCart,
   } = useCart();
 
-  const [phone, setPhone]           = useState("254");
+  const [phone, setPhone]           = useState("");
   const [loading, setLoading]       = useState(false);
   const [validating, setValidating] = useState(false);
   const [error, setError]           = useState(null);
   const [phoneError, setPhoneError] = useState(null);
   const [stockIssues, setStockIssues] = useState([]);
 
-  // ── Phone validation ───────────────────────────────────────
+  // ── Phone Validation ──
   const validatePhone = (value) => {
     const cleaned = value.replace(/\s/g, "");
-    return /^(254|0)?7\d{8}$/.test(cleaned);
+    return /^(254|0)?7\d{8}$/.test(cleaned) || /^(254|0)?1\d{8}$/.test(cleaned); // Added Safaricom 01xx series support
   };
 
   const formatPhone = (value) => {
     const cleaned = value.replace(/\s/g, "");
     if (cleaned.startsWith("0")) return "254" + cleaned.slice(1);
-    if (cleaned.startsWith("7")) return "254" + cleaned;
+    if (cleaned.startsWith("7") || cleaned.startsWith("1")) return "254" + cleaned;
     return cleaned;
   };
 
-  // ── Place order ────────────────────────────────────────────
+  // ── Place Order ──
   const handlePlaceOrder = async () => {
     setError(null);
     setPhoneError(null);
     setStockIssues([]);
 
     if (!validatePhone(phone)) {
-      setPhoneError("Enter a valid Kenyan number e.g. 0712345678");
+      setPhoneError("Enter a valid Kenyan number (e.g., 0712345678)");
       return;
     }
 
-    // Step 1 — check fresh stock for every cart item
+    // Step 1: Validate stock immediately before order creation
     setValidating(true);
     const issues = await validateCartStock();
     setValidating(false);
 
     if (issues.length > 0) {
-      // Show stock issues — user must resolve before ordering
       setStockIssues(issues);
       return;
     }
 
-    // Step 2 — create order on backend
+    // Step 2: Create Order
     setLoading(true);
-    const result = await createOrder(formatPhone(phone));
+    const result = await createOrder({
+      phone: formatPhone(phone),
+      paymentMethod: "MPESA_MANUAL" // Explicitly flag as manual in DB
+    });
     setLoading(false);
 
     if (result.success) {
-      // Backend cleared cart in DB — clear local cart too
       clearCart();
       router.replace(`/order-confirmation/${result.data._id}`);
     } else {
-      setError(result.message);
+      setError(result.message || "Failed to place order. Please try again.");
     }
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
 
-      {/* ── Header ── */}
+      {/* ── Protected Header ── */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity
-          style={styles.backBtn}
+          style={styles.headerIconBtn}
           onPress={() => router.back()}
           activeOpacity={0.8}
         >
-          <Ionicons name="arrow-back" size={22} color={colors.primary} />
+          <Ionicons name="chevron-back" size={24} color={colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Checkout</Text>
-        <View style={{ width: 38 }} />
+        <View style={{ width: 44 }} /> {/* Spacer for centering */}
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: insets.bottom + 100 },
-        ]}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 140 }]}
         keyboardShouldPersistTaps="handled"
       >
-
-        {/* ── Stock issues — shown when cart has stale stock ── */}
+        {/* ── Dynamic Stock Issues Resolution ── */}
         {stockIssues.length > 0 && (
-          <View style={styles.stockIssuesCard}>
-            <View style={styles.stockIssuesHeader}>
-              <Ionicons name="warning-outline" size={18} color="#F59E0B" />
-              <Text style={styles.stockIssuesTitle}>
-                Stock has changed
-              </Text>
+          <View style={styles.warningCard}>
+            <View style={styles.warningHeader}>
+              <Ionicons name="alert-circle" size={22} color="#E74C3C" />
+              <Text style={styles.warningTitle}>Inventory Update</Text>
             </View>
-            <Text style={styles.stockIssuesSub}>
-              Some items are no longer available in the quantity you selected.
-              Please resolve before placing your order.
+            <Text style={styles.warningSub}>
+              Some items in your cart sold out while you were browsing. Please review the changes below.
             </Text>
 
             {stockIssues.map((issue) => (
-              <View key={issue.productId} style={styles.stockIssueRow}>
-                <View style={styles.stockIssueLeft}>
-                  <Text style={styles.stockIssueName} numberOfLines={1}>
-                    {issue.name}
+              <View key={issue.productId} style={styles.issueRow}>
+                <View style={styles.issueInfo}>
+                  <Text style={styles.issueName} numberOfLines={1}>{issue.name}</Text>
+                  <Text style={styles.issueDetail}>
+                    {issue.availableStock > 0 ? `Only ${issue.availableStock} left` : "Out of stock"}
                   </Text>
-                  <Text style={styles.stockIssueDetail}>{issue.issue}</Text>
                 </View>
 
                 {issue.availableStock > 0 ? (
-                  // Reduce to available stock
                   <TouchableOpacity
-                    style={styles.fixBtn}
+                    style={styles.actionBtnUpdate}
                     onPress={() => {
                       updateQuantity(issue.productId, issue.availableStock);
-                      setStockIssues((prev) =>
-                        prev.filter((i) => i.productId !== issue.productId)
-                      );
+                      setStockIssues((prev) => prev.filter((i) => i.productId !== issue.productId));
                     }}
                   >
-                    <Text style={styles.fixBtnText}>
-                      Keep {issue.availableStock}
-                    </Text>
+                    <Text style={styles.actionBtnTextUpdate}>Update</Text>
                   </TouchableOpacity>
                 ) : (
-                  // Remove item entirely
                   <TouchableOpacity
-                    style={styles.removeBtn}
+                    style={styles.actionBtnRemove}
                     onPress={() => {
                       removeFromCart(issue.productId);
-                      setStockIssues((prev) =>
-                        prev.filter((i) => i.productId !== issue.productId)
-                      );
+                      setStockIssues((prev) => prev.filter((i) => i.productId !== issue.productId));
                     }}
                   >
-                    <Text style={styles.removeBtnText}>Remove</Text>
+                    <Text style={styles.actionBtnTextRemove}>Remove</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -169,149 +156,100 @@ export default function CheckoutScreen() {
           </View>
         )}
 
-        {/* ── Order summary ── */}
+        {/* ── Order Summary ── */}
         <Text style={styles.sectionTitle}>Order Summary</Text>
         <View style={styles.card}>
-          {items.map((item) => (
-            <View key={item.productId} style={styles.orderItem}>
-              <View style={styles.orderItemLeft}>
-                <Text style={styles.orderItemName} numberOfLines={1}>
-                  {item.name}
+          {items.map((item, index) => (
+            <View key={item.productId}>
+              <View style={styles.orderItemRow}>
+                <View style={styles.orderItemLeft}>
+                  <Text style={styles.orderItemQty}>x{item.quantity}</Text>
+                  <Text style={styles.orderItemName} numberOfLines={1}>{item.name}</Text>
+                </View>
+                <Text style={styles.orderItemPrice}>
+                  KSh {(item.price * item.quantity).toLocaleString()}
                 </Text>
-                <Text style={styles.orderItemQty}>x{item.quantity}</Text>
               </View>
-              <Text style={styles.orderItemPrice}>
-                KSh {(item.price * item.quantity).toLocaleString()}
-              </Text>
+              {index < items.length - 1 && <View style={styles.divider} />}
             </View>
           ))}
-
-          <View style={styles.cardDivider} />
-
-          <View style={styles.orderItem}>
-            <Text style={styles.orderItemName}>Delivery</Text>
-            <Text style={styles.freeText}>Free</Text>
-          </View>
-
-          <View style={styles.cardDivider} />
-
-          <View style={styles.orderItem}>
-            <Text style={styles.totalLabel}>
-              Total ({totalItems} items)
-            </Text>
-            <Text style={styles.totalValue}>
-              KSh {totalPrice.toLocaleString()}
-            </Text>
+          
+          <View style={styles.divider} />
+          
+          <View style={styles.orderItemRow}>
+            <Text style={styles.summaryLabel}>Delivery</Text>
+            <Text style={styles.summaryValue}>Calculated next step</Text>
           </View>
         </View>
 
-        {/* ── Payment ── */}
-        <Text style={styles.sectionTitle}>Payment</Text>
+        {/* ── Payment Section ── */}
+        <Text style={styles.sectionTitle}>Payment Details</Text>
         <View style={styles.card}>
-          <View style={styles.paymentMethod}>
-            <View style={styles.mpesaBadge}>
-              <Text style={styles.mpesaText}>M-PESA</Text>
+          <View style={styles.mpesaHeader}>
+            <View style={styles.mpesaIconWrapper}>
+              <Ionicons name="phone-portrait" size={20} color="#2ECC71" />
             </View>
             <View>
-              <Text style={styles.paymentMethodTitle}>Pay via M-Pesa</Text>
-              <Text style={styles.paymentMethodSub}>
-                Enter your M-Pesa number below
-              </Text>
+              <Text style={styles.paymentMethodTitle}>M-Pesa Manual Transfer</Text>
+              <Text style={styles.paymentMethodSub}>You will send money securely on the next page.</Text>
             </View>
           </View>
 
-          <View style={styles.cardDivider} />
+          <View style={styles.divider} />
 
           <Text style={styles.inputLabel}>M-Pesa Phone Number</Text>
-          <View style={[
-            styles.inputRow,
-            phoneError && styles.inputRowError,
-          ]}>
-            <Ionicons
-              name="phone-portrait-outline"
-              size={18}
-              color={colors.textMuted}
-            />
+          <Text style={styles.inputContext}>Provide the number you will use to send the payment so we can verify your transaction.</Text>
+          
+          <View style={[styles.inputWrapper, phoneError && styles.inputWrapperError]}>
+            <Text style={styles.inputPrefix}>+254</Text>
             <TextInput
               style={styles.input}
-              placeholder="0712 345 678"
+              placeholder="712 345 678"
               placeholderTextColor={colors.textMuted}
-              value={phone}
+              value={phone.replace(/^(254|0)/, "")} // Strip prefix for display if they typed it
               onChangeText={(v) => {
                 setPhone(v);
                 setPhoneError(null);
               }}
               keyboardType="phone-pad"
-              maxLength={13}
+              maxLength={10}
             />
           </View>
-          {phoneError ? (
-            <Text style={styles.fieldError}>{phoneError}</Text>
-          ) : (
-            <Text style={styles.inputHint}>
-              You will receive an STK push on this number
-            </Text>
-          )}
+          {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
         </View>
 
-        {/* ── Info note ── */}
-        <View style={styles.noteCard}>
-          <Ionicons
-            name="information-circle-outline"
-            size={18}
-            color={colors.primary}
-          />
-          <Text style={styles.noteText}>
-            Your order will be placed immediately. M-Pesa payment
-            integration coming soon — you will be contacted to complete payment.
-          </Text>
-        </View>
-
-        {/* ── Server error ── */}
-        {error ? (
-          <View style={styles.errorCard}>
-            <Ionicons name="alert-circle-outline" size={16} color={colors.error} />
-            <Text style={styles.errorText}>{error}</Text>
+        {/* ── Server Error ── */}
+        {error && (
+          <View style={styles.serverErrorBlock}>
+            <Ionicons name="warning" size={18} color="#E74C3C" />
+            <Text style={styles.serverErrorText}>{error}</Text>
           </View>
-        ) : null}
-
+        )}
       </ScrollView>
 
-      {/* ── Bottom bar ── */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
-        <View style={styles.bottomTotal}>
-          <Text style={styles.bottomTotalLabel}>Total</Text>
-          <Text style={styles.bottomTotalValue}>
-            KSh {totalPrice.toLocaleString()}
-          </Text>
+      {/* ── Sticky Bottom Sheet ── */}
+      <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + 16 }]}>
+        <View style={styles.totalRow}>
+          <Text style={styles.totalLabel}>Total to Pay</Text>
+          <Text style={styles.totalValue}>KSh {totalPrice.toLocaleString()}</Text>
         </View>
 
         <TouchableOpacity
-          style={[
-            styles.placeOrderBtn,
-            (loading || validating) && styles.placeOrderBtnDisabled,
-          ]}
+          style={[styles.checkoutBtn, (loading || validating) && styles.checkoutBtnDisabled]}
           onPress={handlePlaceOrder}
           disabled={loading || validating}
-          activeOpacity={0.88}
+          activeOpacity={0.85}
         >
           {loading || validating ? (
-            <ActivityIndicator color={colors.white} size="small" />
+            <ActivityIndicator color={colors.background} size="small" />
           ) : (
             <>
-              <Ionicons
-                name="checkmark-circle-outline"
-                size={18}
-                color={colors.white}
-              />
-              <Text style={styles.placeOrderText}>
-                {validating ? "Checking stock..." : "Place Order"}
-              </Text>
+              <Text style={styles.checkoutText}>Confirm & Pay</Text>
+              <Ionicons name="lock-closed" size={16} color={colors.background} />
             </>
           )}
         </TouchableOpacity>
       </View>
-
     </View>
   );
 }
@@ -319,53 +257,68 @@ export default function CheckoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface, // Warm background
   },
+  
+  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingBottom: 12,
-    backgroundColor: colors.background,
+    paddingBottom: 16,
   },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: colors.accent,
+  headerIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.85)",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.primary,
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    gap: 16,
-  },
-  sectionTitle: {
-    fontSize: 15,
+    fontSize: 20,
     fontWeight: "700",
     color: colors.text,
-    marginBottom: -8,
+    letterSpacing: -0.3,
   },
+
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+    marginBottom: 12,
+    marginTop: 20,
+  },
+
+  // Soft Cards
   card: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    gap: 12,
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.03,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
   },
-  cardDivider: {
+  divider: {
     height: 1,
     backgroundColor: colors.border,
+    marginVertical: 14,
   },
-  orderItem: {
+
+  // Order Summary Items
+  orderItemRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -373,18 +326,249 @@ const styles = StyleSheet.create({
   orderItemLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
     flex: 1,
+    gap: 12,
+  },
+  orderItemQty: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
+    backgroundColor: "rgba(246,221,207,0.5)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   orderItemName: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.text,
     fontWeight: "500",
     flex: 1,
   },
-  orderItemQty: {
+  orderItemPrice: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: "500",
+  },
+  summaryValue: {
+    fontSize: 14,
+    color: colors.textMuted,
+    fontStyle: "italic",
+  },
+
+  // Payment Section
+  mpesaHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  mpesaIconWrapper: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: "rgba(46, 204, 113, 0.15)", // Soft Mpesa green
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  paymentMethodTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  paymentMethodSub: {
     fontSize: 13,
     color: colors.textSecondary,
-    fontWeight: "400",
+    marginTop: 2,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.text,
+    marginBottom: 4,
+  },
+  inputContext: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderRadius: 999, // Pill shape
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 20,
+    height: 52,
+  },
+  inputWrapperError: {
+    borderColor: "#E74C3C",
+    backgroundColor: "rgba(231, 76, 60, 0.05)",
+  },
+  inputPrefix: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.text,
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.text,
+    paddingVertical: 0, // Reset android padding
+  },
+  errorText: {
+    color: "#E74C3C",
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 8,
+    marginLeft: 8,
+  },
+
+  // Warning/Stock Block
+  warningCard: {
+    backgroundColor: "rgba(231, 76, 60, 0.05)",
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(231, 76, 60, 0.2)",
+    marginBottom: 10,
+  },
+  warningHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
+  },
+  warningTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#E74C3C",
+  },
+  warningSub: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  issueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.white,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  issueInfo: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  issueName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  issueDetail: {
+    fontSize: 12,
+    color: "#E74C3C",
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  actionBtnUpdate: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  actionBtnTextUpdate: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  actionBtnRemove: {
+    backgroundColor: "rgba(231, 76, 60, 0.1)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  actionBtnTextRemove: {
+    color: "#E74C3C",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  // Server Error
+  serverErrorBlock: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(231, 76, 60, 0.1)",
+    padding: 14,
+    borderRadius: 12,
+    marginTop: 20,
+  },
+  serverErrorText: {
+    flex: 1,
+    color: "#E74C3C",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+
+  // Bottom Sticky Sheet
+  bottomSheet: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  totalLabel: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    fontWeight: "600",
+  },
+  totalValue: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: colors.primary,
+  },
+  checkoutBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 18,
+    gap: 10,
+  },
+  checkoutBtnDisabled: {
+    backgroundColor: colors.textMuted,
+  },
+  checkoutText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.background,
   },
 });
