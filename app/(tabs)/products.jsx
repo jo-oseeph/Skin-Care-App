@@ -42,14 +42,21 @@ function CategoryPill({ item, active, onPress }) {
       onPress={onPress}
       style={[styles.categoryPill, active && styles.categoryPillActive]}
     >
-      <View style={[styles.categoryIconCircle, active && styles.categoryIconCircleActive]}>
+      <View
+        style={[
+          styles.categoryIconCircle,
+          active && styles.categoryIconCircleActive,
+        ]}
+      >
         <Ionicons
           name={item.icon}
           size={18}
           color={active ? colors.background : colors.textSecondary}
         />
       </View>
-      <Text style={[styles.categoryLabel, active && styles.categoryLabelActive]}>
+      <Text
+        style={[styles.categoryLabel, active && styles.categoryLabelActive]}
+      >
         {item.label}
       </Text>
     </TouchableOpacity>
@@ -65,7 +72,7 @@ export default function ProductsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [category, setCategory] = useState("All");
   const [error, setError] = useState(null);
-  
+
   // Search state
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -132,7 +139,10 @@ export default function ProductsScreen() {
           autoCorrect={false}
         />
         {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch("")} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity
+            onPress={() => setSearch("")}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons name="close-circle" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         )}
@@ -142,7 +152,7 @@ export default function ProductsScreen() {
       <View style={styles.sectionRow}>
         <Text style={styles.sectionTitle}>Categories</Text>
       </View>
-      
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -190,6 +200,10 @@ export default function ProductsScreen() {
             <ProductCard
               product={item}
               onPress={() => router.push(`/product/${item._id}`)}
+              onAddToCart={() => {
+                // Handle add to cart
+                console.log("Add to cart:", item._id);
+              }}
             />
           )}
           numColumns={2}
@@ -257,7 +271,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 999, // Match circular icon buttons from Home
-    backgroundColor: colors.surface, 
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     justifyContent: "center",
@@ -391,7 +405,7 @@ const styles = StyleSheet.create({
   },
   retryText: {
     color: colors.background,
-    fontWeight: "600", 
+    fontWeight: "600",
     fontSize: 13,
   },
 });
