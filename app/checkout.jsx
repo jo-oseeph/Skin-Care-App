@@ -49,7 +49,7 @@ export default function CheckoutScreen() {
   const [phoneError, setPhoneError] = useState(null);
   const [stockIssues, setStockIssues] = useState([]);
 
-  // ── Phone Validation ──
+  //Phone Validation 
   const validatePhone = (value) => {
     const cleaned = value.replace(/\s/g, "");
     return /^(254|0)?7\d{8}$/.test(cleaned) || /^(254|0)?1\d{8}$/.test(cleaned); 
@@ -260,11 +260,6 @@ Total: KSh ${totalPrice}
           ))}
 
           <View style={styles.divider} />
-
-          <View style={styles.orderItemRow}>
-            <Text style={styles.summaryLabel}>Delivery</Text>
-            <Text style={styles.summaryValue}>Calculated next step</Text>
-          </View>
         </View>
         <Text style={styles.sectionTitle}>Delivery Details</Text>
 
@@ -395,9 +390,7 @@ Total: KSh ${totalPrice}
               <Text style={styles.paymentMethodTitle}>
                 M-Pesa Manual Transfer
               </Text>
-              <Text style={styles.paymentMethodSub}>
-                You will send money securely on the next page.
-              </Text>
+           
             </View>
           </View>
 
@@ -464,11 +457,6 @@ Total: KSh ${totalPrice}
           ) : (
             <>
               <Text style={styles.checkoutText}>Place Order</Text>
-              <Ionicons
-                name="lock-closed"
-                size={16}
-                color={colors.background}
-              />
             </>
           )}
         </TouchableOpacity>

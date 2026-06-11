@@ -140,7 +140,6 @@ export default function HomeScreen() {
     <View>
       <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <View>
-          <Text style={styles.topGreeting}>Good morning ✦</Text>
           <Text style={styles.logo}>LUMERA</Text>
         </View>
 
@@ -183,9 +182,6 @@ export default function HomeScreen() {
           style={StyleSheet.absoluteFill}
         />
         <View style={styles.bannerContent}>
-          <View style={styles.bannerTag}>
-            <Text style={styles.bannerTagText}>✦ Spring Edit</Text>
-          </View>
           <Text style={styles.bannerTitle}>
             Crafted for{"\n"}Radiant Skin
           </Text>
