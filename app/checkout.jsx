@@ -184,7 +184,7 @@ Total: KSh ${totalPrice}
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        Dynamic Stock Issues Resolution 
+        {/* Dynamic Stock Issues Resolution  */}
         {stockIssues.length > 0 && (
           <View style={styles.warningCard}>
             <View style={styles.warningHeader}>
@@ -420,7 +420,7 @@ Total: KSh ${totalPrice}
               style={styles.input}
               placeholder="712 345 678"
               placeholderTextColor={colors.textMuted}
-              value={phone.replace(/^(254|0)/, "")} // Strip prefix for display if they typed it
+              value={phone.replace(/^(254|0)/, "")} 
               onChangeText={(v) => {
                 setPhone(v);
                 setPhoneError(null);
@@ -463,7 +463,7 @@ Total: KSh ${totalPrice}
             <ActivityIndicator color={colors.background} size="small" />
           ) : (
             <>
-              <Text style={styles.checkoutText}>Confirm & Pay</Text>
+              <Text style={styles.checkoutText}>Place Order</Text>
               <Ionicons
                 name="lock-closed"
                 size={16}
