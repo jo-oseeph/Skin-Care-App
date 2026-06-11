@@ -480,7 +480,7 @@ Total: KSh ${totalPrice}
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface, // Warm background
+    backgroundColor: colors.surface, 
   },
 
   // Header
@@ -523,7 +523,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
 
-  // Soft Cards
   card: {
     backgroundColor: colors.card,
     borderRadius: 24,
@@ -593,7 +592,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 14,
-    backgroundColor: "rgba(46, 204, 113, 0.15)", // Soft Mpesa green
+    backgroundColor: "rgba(46, 204, 113, 0.15)", 
     justifyContent: "center",
     alignItems: "center",
   },
@@ -623,7 +622,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: colors.surface,
-    borderRadius: 999, // Pill shape
+    borderRadius: 999, 
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: 20,
@@ -644,7 +643,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: colors.text,
-    paddingVertical: 0, // Reset android padding
+    paddingVertical: 0, 
   },
   errorText: {
     color: "#E74C3C",
