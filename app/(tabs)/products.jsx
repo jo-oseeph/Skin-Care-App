@@ -12,14 +12,13 @@ import {
   ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { getProducts } from "../../src/services/productService";
 import ProductCard from "../../src/components/common/ProductCard";
 import { colors } from "../../src/constants/colors";
 
-// Consistent data structure with the Home screen
 const CATEGORIES = [
   { id: "All", label: "All", icon: "apps-outline" },
   { id: "cleanser", label: "Cleanser", icon: "water-outline" },
@@ -34,7 +33,6 @@ const CATEGORIES = [
   { id: "oil", label: "Oil", icon: "water-outline" },
 ];
 
-// Reusable Category Pill matching Home Screen
 function CategoryPill({ item, active, onPress }) {
   return (
     <TouchableOpacity
@@ -54,9 +52,7 @@ function CategoryPill({ item, active, onPress }) {
           color={active ? colors.background : colors.textSecondary}
         />
       </View>
-      <Text
-        style={[styles.categoryLabel, active && styles.categoryLabelActive]}
-      >
+      <Text style={[styles.categoryLabel, active && styles.categoryLabelActive]}>
         {item.label}
       </Text>
     </TouchableOpacity>
@@ -67,17 +63,36 @@ export default function ProductsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
+  // Read the category param passed from HomeScreen
+  const { category: incomingCategory } = useLocalSearchParams();
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [category, setCategory] = useState("All");
   const [error, setError] = useState(null);
 
-  // Search state
+  // Initialise with incoming param if present, else default "All"
+  const [category, setCategory] = useState(
+    incomingCategory && CATEGORIES.find((c) => c.id === incomingCategory)
+      ? incomingCategory
+      : "All"
+  );
+
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // Debounce logic: wait 500ms after the user stops typing before setting the actual search query
+  // When the param changes (e.g. user taps a different category on Home again),
+  // sync the active category in this screen
+  useEffect(() => {
+    if (
+      incomingCategory &&
+      CATEGORIES.find((c) => c.id === incomingCategory)
+    ) {
+      setCategory(incomingCategory);
+    }
+  }, [incomingCategory]);
+
+  // Debounce search input
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
@@ -85,7 +100,6 @@ export default function ProductsScreen() {
     return () => clearTimeout(handler);
   }, [search]);
 
-  // Fetch logic strictly depends on category and debouncedSearch, NOT raw search
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     const params = { sortBy: "newest", limit: 20 };
@@ -102,7 +116,6 @@ export default function ProductsScreen() {
     setLoading(false);
   }, [category, debouncedSearch]);
 
-  // Trigger fetch when dependencies change
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
@@ -119,11 +132,7 @@ export default function ProductsScreen() {
       <View style={styles.topBar}>
         <Text style={styles.topBarTitle}>Discover</Text>
         <TouchableOpacity style={styles.iconBtn}>
-          <Ionicons
-            name="options-outline" // Changed to filter/options icon for a products page
-            size={20}
-            color={colors.text}
-          />
+          <Ionicons name="options-outline" size={20} color={colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -200,10 +209,7 @@ export default function ProductsScreen() {
             <ProductCard
               product={item}
               onPress={() => router.push(`/product/${item._id}`)}
-              onAddToCart={() => {
-                // Handle add to cart
-                console.log("Add to cart:", item._id);
-              }}
+              onAddToCart={() => console.log("Add to cart:", item._id)}
             />
           )}
           numColumns={2}
@@ -233,7 +239,6 @@ export default function ProductsScreen() {
         />
       )}
 
-      {/* Loading Overlay for Search/Filter changes */}
       {loading && products.length === 0 && !refreshing && (
         <View style={[StyleSheet.absoluteFill, styles.loadingOverlay]}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -246,13 +251,13 @@ export default function ProductsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background, // Match Home: #F6DDCF
+    backgroundColor: colors.background,
   },
   headerContainer: {
     paddingBottom: 10,
   },
 
-  // Top bar
+  // ── Top bar ──
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -270,7 +275,7 @@ const styles = StyleSheet.create({
   iconBtn: {
     width: 42,
     height: 42,
-    borderRadius: 999, // Match circular icon buttons from Home
+    borderRadius: 999,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -278,13 +283,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  // Search
+  // ── Search ──
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: colors.surface, // Match surface color (#FBEAE0)
-    borderRadius: 999, // Pill shape is much cleaner for search
+    backgroundColor: colors.surface,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.border,
     marginHorizontal: 20,
@@ -300,7 +305,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
 
-  // Sections
+  // ── Sections ──
   sectionRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -320,7 +325,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
 
-  // Categories (Matched to Home)
+  // ── Categories ──
   categoriesScroll: {
     paddingHorizontal: 20,
     paddingBottom: 4,
@@ -356,7 +361,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Grid
+  // ── Grid ──
   listContent: {
     paddingBottom: 40,
   },
@@ -366,7 +371,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  // States
+  // ── States ──
   centered: {
     flex: 1,
     justifyContent: "center",
@@ -374,7 +379,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loadingOverlay: {
-    backgroundColor: "rgba(246,221,207,0.7)", // Semi-transparent warm background
+    backgroundColor: "rgba(246,221,207,0.7)",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10,

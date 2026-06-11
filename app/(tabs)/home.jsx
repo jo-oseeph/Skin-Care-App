@@ -17,7 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { getProducts } from "../../src/services/productService";
+import { getFeaturedProducts } from "../../src/services/productService";
 import { useCart } from "../../src/context/CartContext";
 import { colors } from "../../src/constants/colors";
 
@@ -27,7 +27,8 @@ const CARD_WIDTH = (width - 52) / 2;
 const BANNER_IMAGE =
   "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?q=80&w=1400&auto=format&fit=crop";
 
-// Structurally sound categories array matching what the Pill component actually needs
+// Categories are now navigation shortcuts — they don't filter Home,
+// they take the user into the Products tab pre-filtered.
 const CATEGORIES = [
   { id: "All", label: "All", icon: "apps-outline" },
   { id: "cleanser", label: "Cleanser", icon: "water-outline" },
@@ -42,23 +43,22 @@ const CATEGORIES = [
   { id: "oil", label: "Oil", icon: "water-outline" },
 ];
 
-function CategoryPill({ item, active, onPress }) {
+// Category pill — no active state here since we're navigating, not filtering
+function CategoryPill({ item, onPress }) {
   return (
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={onPress}
-      style={[styles.categoryPill, active && styles.categoryPillActive]}
+      style={styles.categoryPill}
     >
-      <View style={[styles.categoryIconCircle, active && styles.categoryIconCircleActive]}>
+      <View style={styles.categoryIconCircle}>
         <Ionicons
           name={item.icon}
           size={18}
-          color={active ? colors.background : colors.textSecondary}
+          color={colors.textSecondary}
         />
       </View>
-      <Text style={[styles.categoryLabel, active && styles.categoryLabelActive]}>
-        {item.label}
-      </Text>
+      <Text style={styles.categoryLabel}>{item.label}</Text>
     </TouchableOpacity>
   );
 }
@@ -80,6 +80,11 @@ function ProductCard({ product, onPress }) {
           style={styles.cardImage}
           resizeMode="cover"
         />
+        {product.isNew && (
+          <View style={styles.newBadge}>
+            <Text style={styles.newBadgeText}>NEW</Text>
+          </View>
+        )}
       </View>
       <View style={styles.cardBody}>
         <Text numberOfLines={1} style={styles.cardName}>
@@ -89,15 +94,8 @@ function ProductCard({ product, onPress }) {
           <Text style={styles.cardPrice}>
             KSh {product.price.toLocaleString()}
           </Text>
-          <TouchableOpacity
-            style={styles.cardCta}
-            activeOpacity={0.85}
-          >
-            <Ionicons
-              name="arrow-forward"
-              size={13}
-              color={colors.background}
-            />
+          <TouchableOpacity style={styles.cardCta} activeOpacity={0.85} onPress={onPress}>
+            <Ionicons name="arrow-forward" size={13} color={colors.background} />
           </TouchableOpacity>
         </View>
       </View>
@@ -110,27 +108,35 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { totalItems } = useCart();
 
-  const [products, setProducts] = useState([]);
-  const [activeCategory, setActiveCategory] = useState("All");
+  const [featured, setFeatured] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Re-fetch when activeCategory changes
   useEffect(() => {
-    loadProducts();
-  }, [activeCategory]);
+    loadFeatured();
+  }, []);
 
-  const loadProducts = async () => {
+  const loadFeatured = async () => {
     setLoading(true);
-    const params = { sortBy: "newest", limit: 12 };
-    
-    // Append category to network request if not "All"
-    if (activeCategory !== "All") {
-      params.category = activeCategory;
-    }
-
-    const result = await getProducts(params);
-    if (result.success) setProducts(result.products);
+    // Only fetch latest 8 products for the Home featured section
+    const result = await getFeaturedProducts({ sortBy: "newest", limit: 8 });
+    if (result.success) setFeatured(result.products);
     setLoading(false);
+  };
+
+  // Navigate to Products tab with a category pre-selected
+  const handleCategoryPress = (categoryId) => {
+    router.push({
+      pathname: "/(tabs)/products",
+      params: { category: categoryId },
+    });
+  };
+
+  // Navigate to Products tab with no filter
+  const handleSeeAllProducts = () => {
+    router.push({
+      pathname: "/(tabs)/products",
+      params: { category: "All" },
+    });
   };
 
   const handleProductPress = (product) =>
@@ -138,16 +144,13 @@ export default function HomeScreen() {
 
   const ListHeader = () => (
     <View>
+      {/* ── Top Bar ── */}
       <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
-        <View>
-          <Text style={styles.logo}>LUMERA</Text>
-        </View>
-
+        <Text style={styles.logo}>LUMERA</Text>
         <View style={styles.topIcons}>
           <TouchableOpacity style={styles.iconBtn}>
             <Ionicons name="search-outline" size={19} color={colors.text} />
           </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.iconBtn}
             onPress={() => router.push("/(tabs)/cart")}
@@ -162,9 +165,11 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {/* ── Hero Banner ── */}
       <TouchableOpacity
         activeOpacity={0.92}
         style={styles.banner}
+        onPress={handleSeeAllProducts}
       >
         <Image
           source={{ uri: BANNER_IMAGE }}
@@ -182,23 +187,18 @@ export default function HomeScreen() {
           style={StyleSheet.absoluteFill}
         />
         <View style={styles.bannerContent}>
-          <Text style={styles.bannerTitle}>
-            Crafted for{"\n"}Radiant Skin
-          </Text>
-          <TouchableOpacity style={styles.bannerBtn}>
+          <Text style={styles.bannerTitle}>Crafted for{"\n"}Radiant Skin</Text>
+          <View style={styles.bannerBtn}>
             <Text style={styles.bannerBtnText}>Shop Now</Text>
-            <Ionicons
-              name="arrow-forward"
-              size={13}
-              color={colors.text}
-            />
-          </TouchableOpacity>
+            <Ionicons name="arrow-forward" size={13} color={colors.text} />
+          </View>
         </View>
       </TouchableOpacity>
 
+      {/* ── Collections (navigate into Products tab) ── */}
       <View style={styles.sectionRow}>
         <Text style={styles.sectionTitle}>Collections</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleSeeAllProducts}>
           <Text style={styles.seeAll}>See all</Text>
         </TouchableOpacity>
       </View>
@@ -212,29 +212,22 @@ export default function HomeScreen() {
           <CategoryPill
             key={cat.id}
             item={cat}
-            active={activeCategory === cat.id}
-            onPress={() => setActiveCategory(cat.id)}
+            onPress={() => handleCategoryPress(cat.id)}
           />
         ))}
       </ScrollView>
 
+      {/* ── New Arrivals Header ── */}
       <View style={[styles.sectionRow, { marginTop: 8 }]}>
-        <Text style={styles.sectionTitle}>
-          {activeCategory === "All" ? "New Arrivals" : catLabel(activeCategory)}
-        </Text>
-        <TouchableOpacity>
+        <Text style={styles.sectionTitle}>New Arrivals</Text>
+        <TouchableOpacity onPress={handleSeeAllProducts}>
           <Text style={styles.seeAll}>See all</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 
-  // Helper to get category title for the header
-  const catLabel = (id) => {
-    return CATEGORIES.find(c => c.id === id)?.label || "Products";
-  };
-
-  if (loading && products.length === 0) {
+  if (loading && featured.length === 0) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -247,7 +240,7 @@ export default function HomeScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       <FlatList
-        data={products}
+        data={featured}
         keyExtractor={(item) => item._id}
         numColumns={2}
         showsVerticalScrollIndicator={false}
@@ -260,6 +253,13 @@ export default function HomeScreen() {
             onPress={() => handleProductPress(item)}
           />
         )}
+        ListEmptyComponent={
+          !loading && (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No products yet</Text>
+            </View>
+          )
+        }
       />
     </View>
   );
@@ -268,7 +268,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background, 
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -279,19 +279,14 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 36,
   },
+
+  // ── Top Bar ──
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
     paddingHorizontal: 20,
     marginBottom: 22,
-  },
-  topGreeting: {
-    fontSize: 12,
-    fontWeight: "400",
-    letterSpacing: 0.5,
-    color: colors.textMuted,
-    marginBottom: 2,
   },
   logo: {
     fontSize: 26,
@@ -310,9 +305,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.surface, 
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border, 
+    borderColor: colors.border,
   },
   badge: {
     position: "absolute",
@@ -332,6 +327,8 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: "700",
   },
+
+  // ── Banner ──
   banner: {
     marginHorizontal: 20,
     height: 200,
@@ -353,21 +350,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 22,
     gap: 12,
-  },
-  bannerTag: {
-    backgroundColor: "rgba(246,221,207,0.18)",
-    borderWidth: 1,
-    borderColor: "rgba(246,221,207,0.35)",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    alignSelf: "flex-start",
-  },
-  bannerTagText: {
-    fontSize: 10,
-    fontWeight: "500",
-    letterSpacing: 1,
-    color: colors.accentSoft,
   },
   bannerTitle: {
     fontSize: 24,
@@ -392,6 +374,8 @@ const styles = StyleSheet.create({
     color: colors.text,
     letterSpacing: 0.3,
   },
+
+  // ── Sections ──
   sectionRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -410,6 +394,8 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: colors.textSecondary,
   },
+
+  // ── Categories ──
   categoriesScroll: {
     paddingHorizontal: 20,
     paddingBottom: 4,
@@ -430,20 +416,14 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.border,
   },
-  categoryIconCircleActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
   categoryLabel: {
     fontSize: 11,
     fontWeight: "500",
     color: colors.textMuted,
     letterSpacing: 0.3,
   },
-  categoryLabelActive: {
-    color: colors.text,
-    fontWeight: "600",
-  },
+
+  // ── Product Grid ──
   row: {
     justifyContent: "space-between",
     paddingHorizontal: 20,
@@ -463,7 +443,7 @@ const styles = StyleSheet.create({
   cardImageBox: {
     width: "100%",
     height: 148,
-    borderRadius: 10, // mathematically aligned border radius
+    borderRadius: 10,
     overflow: "hidden",
     backgroundColor: colors.surface,
     marginBottom: 10,
@@ -471,6 +451,21 @@ const styles = StyleSheet.create({
   cardImage: {
     width: "100%",
     height: "100%",
+  },
+  newBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  newBadgeText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: colors.background,
+    letterSpacing: 0.8,
   },
   cardBody: {
     paddingHorizontal: 4,
@@ -500,5 +495,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    paddingTop: 40,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: colors.textMuted,
   },
 });
