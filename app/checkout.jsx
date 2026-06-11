@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   StatusBar,
+  Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,8 +19,8 @@ import { createOrder } from "../src/services/orderService";
 import { colors } from "../src/constants/colors";
 
 export default function CheckoutScreen() {
-  const router  = useRouter();
-  const insets  = useSafeAreaInsets();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const {
     items,
@@ -31,68 +32,138 @@ export default function CheckoutScreen() {
     removeFromCart,
   } = useCart();
 
-  const [phone, setPhone]           = useState("");
-  const [loading, setLoading]       = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [county, setCounty] = useState("");
+  const [town, setTown] = useState("");
+  const [address, setAddress] = useState("");
+  const [landmark, setLandmark] = useState("");
+
+  const [fullNameError, setFullNameError] = useState(null);
+  const [countyError, setCountyError] = useState(null);
+  const [townError, setTownError] = useState(null);
+  const [addressError, setAddressError] = useState(null);
+  const [phone, setPhone] = useState("");
+  const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
-  const [error, setError]           = useState(null);
+  const [error, setError] = useState(null);
   const [phoneError, setPhoneError] = useState(null);
   const [stockIssues, setStockIssues] = useState([]);
 
   // ── Phone Validation ──
   const validatePhone = (value) => {
     const cleaned = value.replace(/\s/g, "");
-    return /^(254|0)?7\d{8}$/.test(cleaned) || /^(254|0)?1\d{8}$/.test(cleaned); // Added Safaricom 01xx series support
+    return /^(254|0)?7\d{8}$/.test(cleaned) || /^(254|0)?1\d{8}$/.test(cleaned); 
   };
 
   const formatPhone = (value) => {
     const cleaned = value.replace(/\s/g, "");
     if (cleaned.startsWith("0")) return "254" + cleaned.slice(1);
-    if (cleaned.startsWith("7") || cleaned.startsWith("1")) return "254" + cleaned;
+    if (cleaned.startsWith("7") || cleaned.startsWith("1"))
+      return "254" + cleaned;
     return cleaned;
   };
 
-  // ── Place Order ──
-  const handlePlaceOrder = async () => {
-    setError(null);
-    setPhoneError(null);
-    setStockIssues([]);
+  //Place Order 
+ const handlePlaceOrder = async () => {
+  setError(null);
+  setPhoneError(null);
+  setFullNameError(null);
+  setCountyError(null);
+  setTownError(null);
+  setAddressError(null);
+  setStockIssues([]);
 
-    if (!validatePhone(phone)) {
-      setPhoneError("Enter a valid Kenyan number (e.g., 0712345678)");
-      return;
-    }
+  let hasError = false;
 
-    // Step 1: Validate stock immediately before order creation
-    setValidating(true);
-    const issues = await validateCartStock();
-    setValidating(false);
+  if (!fullName.trim()) {
+    setFullNameError("Full name is required");
+    hasError = true;
+  }
 
-    if (issues.length > 0) {
-      setStockIssues(issues);
-      return;
-    }
+  if (!validatePhone(phone)) {
+    setPhoneError("Enter a valid Kenyan number");
+    hasError = true;
+  }
 
-    // Step 2: Create Order
-    setLoading(true);
-    const result = await createOrder({
-      phone: formatPhone(phone),
-      paymentMethod: "MPESA_MANUAL" // Explicitly flag as manual in DB
-    });
-    setLoading(false);
+  if (!county.trim()) {
+    setCountyError("County is required");
+    hasError = true;
+  }
 
-    if (result.success) {
-      clearCart();
-      router.replace(`/order-confirmation/${result.data._id}`);
-    } else {
-      setError(result.message || "Failed to place order. Please try again.");
-    }
-  };
+  if (!town.trim()) {
+    setTownError("Town is required");
+    hasError = true;
+  }
 
+  if (!address.trim()) {
+    setAddressError("Address is required");
+    hasError = true;
+  }
+
+  if (hasError) return;
+
+  setValidating(true);
+  const issues = await validateCartStock();
+  setValidating(false);
+
+  if (issues.length > 0) {
+    setStockIssues(issues);
+    return;
+  }
+
+  setLoading(true);
+
+  const result = await createOrder({
+    deliveryDetails: {
+      fullName: fullName.trim(),
+      phoneNumber: formatPhone(phone),
+      county: county.trim(),
+      town: town.trim(),
+      address: address.trim(),
+      landmark: landmark.trim(),
+    },
+  });
+
+  setLoading(false);
+
+  if (!result.success) {
+    setError(result.message || "Failed to place order");
+    return;
+  }
+
+  const orderId = result.data._id;
+
+  const message = `
+New Order #${orderId}
+
+Name: ${fullName}
+Phone: ${formatPhone(phone)}
+Location: ${county}, ${town}
+Address: ${address}
+Landmark: ${landmark}
+
+Items:
+${items.map(i => `- ${i.name} x${i.quantity} = KSh ${i.price * i.quantity}`).join("\n")}
+
+Total: KSh ${totalPrice}
+`;
+
+  const ownerPhone = "254719238337"; 
+
+  const url = `https://wa.me/${ownerPhone}?text=${encodeURIComponent(message)}`;
+
+  clearCart();
+
+  router.replace(`/order-confirmation/${orderId}`);
+
+  setTimeout(() => {
+    Linking.openURL(url);
+  }, 500);
+};
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
 
-      {/* ── Protected Header ── */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity
           style={styles.headerIconBtn}
@@ -102,15 +173,18 @@ export default function CheckoutScreen() {
           <Ionicons name="chevron-back" size={24} color={colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Checkout</Text>
-        <View style={{ width: 44 }} /> {/* Spacer for centering */}
+        <View style={{ width: 44 }} /> 
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 140 }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: insets.bottom + 140 },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Dynamic Stock Issues Resolution ── */}
+        Dynamic Stock Issues Resolution 
         {stockIssues.length > 0 && (
           <View style={styles.warningCard}>
             <View style={styles.warningHeader}>
@@ -118,15 +192,20 @@ export default function CheckoutScreen() {
               <Text style={styles.warningTitle}>Inventory Update</Text>
             </View>
             <Text style={styles.warningSub}>
-              Some items in your cart sold out while you were browsing. Please review the changes below.
+              Some items in your cart sold out while you were browsing. Please
+              review the changes below.
             </Text>
 
             {stockIssues.map((issue) => (
               <View key={issue.productId} style={styles.issueRow}>
                 <View style={styles.issueInfo}>
-                  <Text style={styles.issueName} numberOfLines={1}>{issue.name}</Text>
+                  <Text style={styles.issueName} numberOfLines={1}>
+                    {issue.name}
+                  </Text>
                   <Text style={styles.issueDetail}>
-                    {issue.availableStock > 0 ? `Only ${issue.availableStock} left` : "Out of stock"}
+                    {issue.availableStock > 0
+                      ? `Only ${issue.availableStock} left`
+                      : "Out of stock"}
                   </Text>
                 </View>
 
@@ -135,7 +214,9 @@ export default function CheckoutScreen() {
                     style={styles.actionBtnUpdate}
                     onPress={() => {
                       updateQuantity(issue.productId, issue.availableStock);
-                      setStockIssues((prev) => prev.filter((i) => i.productId !== issue.productId));
+                      setStockIssues((prev) =>
+                        prev.filter((i) => i.productId !== issue.productId),
+                      );
                     }}
                   >
                     <Text style={styles.actionBtnTextUpdate}>Update</Text>
@@ -145,7 +226,9 @@ export default function CheckoutScreen() {
                     style={styles.actionBtnRemove}
                     onPress={() => {
                       removeFromCart(issue.productId);
-                      setStockIssues((prev) => prev.filter((i) => i.productId !== issue.productId));
+                      setStockIssues((prev) =>
+                        prev.filter((i) => i.productId !== issue.productId),
+                      );
                     }}
                   >
                     <Text style={styles.actionBtnTextRemove}>Remove</Text>
@@ -164,7 +247,9 @@ export default function CheckoutScreen() {
               <View style={styles.orderItemRow}>
                 <View style={styles.orderItemLeft}>
                   <Text style={styles.orderItemQty}>x{item.quantity}</Text>
-                  <Text style={styles.orderItemName} numberOfLines={1}>{item.name}</Text>
+                  <Text style={styles.orderItemName} numberOfLines={1}>
+                    {item.name}
+                  </Text>
                 </View>
                 <Text style={styles.orderItemPrice}>
                   KSh {(item.price * item.quantity).toLocaleString()}
@@ -173,14 +258,131 @@ export default function CheckoutScreen() {
               {index < items.length - 1 && <View style={styles.divider} />}
             </View>
           ))}
-          
+
           <View style={styles.divider} />
-          
+
           <View style={styles.orderItemRow}>
             <Text style={styles.summaryLabel}>Delivery</Text>
             <Text style={styles.summaryValue}>Calculated next step</Text>
           </View>
         </View>
+        <Text style={styles.sectionTitle}>Delivery Details</Text>
+
+<View style={styles.card}>
+  <Text style={styles.inputLabel}>Full Name</Text>
+
+  <View
+    style={[
+      styles.inputWrapperNormal,
+      fullNameError && styles.inputWrapperError,
+    ]}
+  >
+    <TextInput
+      style={styles.normalInput}
+      placeholder="John Doe"
+      value={fullName}
+      onChangeText={(v) => {
+        setFullName(v);
+        setFullNameError(null);
+      }}
+    />
+  </View>
+
+  {fullNameError && (
+    <Text style={styles.errorText}>{fullNameError}</Text>
+  )}
+
+  <View style={{ height: 16 }} />
+
+  <Text style={styles.inputLabel}>County</Text>
+
+  <View
+    style={[
+      styles.inputWrapperNormal,
+      countyError && styles.inputWrapperError,
+    ]}
+  >
+    <TextInput
+      style={styles.normalInput}
+      placeholder="Nairobi"
+      value={county}
+      onChangeText={(v) => {
+        setCounty(v);
+        setCountyError(null);
+      }}
+    />
+  </View>
+
+  {countyError && (
+    <Text style={styles.errorText}>{countyError}</Text>
+  )}
+
+  <View style={{ height: 16 }} />
+
+  <Text style={styles.inputLabel}>Town / Area</Text>
+
+  <View
+    style={[
+      styles.inputWrapperNormal,
+      townError && styles.inputWrapperError,
+    ]}
+  >
+    <TextInput
+      style={styles.normalInput}
+      placeholder="Westlands"
+      value={town}
+      onChangeText={(v) => {
+        setTown(v);
+        setTownError(null);
+      }}
+    />
+  </View>
+
+  {townError && (
+    <Text style={styles.errorText}>{townError}</Text>
+  )}
+
+  <View style={{ height: 16 }} />
+
+  <Text style={styles.inputLabel}>Delivery Address</Text>
+
+  <View
+    style={[
+      styles.inputWrapperNormal,
+      addressError && styles.inputWrapperError,
+    ]}
+  >
+    <TextInput
+      style={styles.normalInput}
+      placeholder="Building, Street, House Number"
+      value={address}
+      onChangeText={(v) => {
+        setAddress(v);
+        setAddressError(null);
+      }}
+      multiline
+    />
+  </View>
+
+  {addressError && (
+    <Text style={styles.errorText}>{addressError}</Text>
+  )}
+
+  <View style={{ height: 16 }} />
+
+  <Text style={styles.inputLabel}>
+    Landmark (Optional)
+  </Text>
+
+  <View style={styles.inputWrapperNormal}>
+    <TextInput
+      style={styles.normalInput}
+      placeholder="Near Quickmart"
+      value={landmark}
+      onChangeText={setLandmark}
+    />
+  </View>
+</View>
 
         {/* ── Payment Section ── */}
         <Text style={styles.sectionTitle}>Payment Details</Text>
@@ -190,17 +392,29 @@ export default function CheckoutScreen() {
               <Ionicons name="phone-portrait" size={20} color="#2ECC71" />
             </View>
             <View>
-              <Text style={styles.paymentMethodTitle}>M-Pesa Manual Transfer</Text>
-              <Text style={styles.paymentMethodSub}>You will send money securely on the next page.</Text>
+              <Text style={styles.paymentMethodTitle}>
+                M-Pesa Manual Transfer
+              </Text>
+              <Text style={styles.paymentMethodSub}>
+                You will send money securely on the next page.
+              </Text>
             </View>
           </View>
 
           <View style={styles.divider} />
 
           <Text style={styles.inputLabel}>M-Pesa Phone Number</Text>
-          <Text style={styles.inputContext}>Provide the number you will use to send the payment so we can verify your transaction.</Text>
-          
-          <View style={[styles.inputWrapper, phoneError && styles.inputWrapperError]}>
+          <Text style={styles.inputContext}>
+            Provide the number you will use to send the payment so we can verify
+            your transaction.
+          </Text>
+
+          <View
+            style={[
+              styles.inputWrapper,
+              phoneError && styles.inputWrapperError,
+            ]}
+          >
             <Text style={styles.inputPrefix}>+254</Text>
             <TextInput
               style={styles.input}
@@ -231,11 +445,16 @@ export default function CheckoutScreen() {
       <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + 16 }]}>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total to Pay</Text>
-          <Text style={styles.totalValue}>KSh {totalPrice.toLocaleString()}</Text>
+          <Text style={styles.totalValue}>
+            KSh {totalPrice.toLocaleString()}
+          </Text>
         </View>
 
         <TouchableOpacity
-          style={[styles.checkoutBtn, (loading || validating) && styles.checkoutBtnDisabled]}
+          style={[
+            styles.checkoutBtn,
+            (loading || validating) && styles.checkoutBtnDisabled,
+          ]}
           onPress={handlePlaceOrder}
           disabled={loading || validating}
           activeOpacity={0.85}
@@ -245,7 +464,11 @@ export default function CheckoutScreen() {
           ) : (
             <>
               <Text style={styles.checkoutText}>Confirm & Pay</Text>
-              <Ionicons name="lock-closed" size={16} color={colors.background} />
+              <Ionicons
+                name="lock-closed"
+                size={16}
+                color={colors.background}
+              />
             </>
           )}
         </TouchableOpacity>
@@ -259,7 +482,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.surface, // Warm background
   },
-  
+
   // Header
   header: {
     flexDirection: "row",
@@ -571,4 +794,19 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.background,
   },
+  inputWrapperNormal: {
+  backgroundColor: colors.surface,
+  borderWidth: 1,
+  borderColor: colors.border,
+  borderRadius: 16,
+  paddingHorizontal: 16,
+  minHeight: 54,
+  justifyContent: "center",
+},
+
+normalInput: {
+  fontSize: 15,
+  color: colors.text,
+  paddingVertical: 12,
+},
 });
