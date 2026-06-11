@@ -380,51 +380,76 @@ Total: KSh ${totalPrice}
 </View>
 
         {/* ── Payment Section ── */}
-        <Text style={styles.sectionTitle}>Payment Details</Text>
-        <View style={styles.card}>
-          <View style={styles.mpesaHeader}>
-            <View style={styles.mpesaIconWrapper}>
-              <Ionicons name="phone-portrait" size={20} color="#2ECC71" />
-            </View>
-            <View>
-              <Text style={styles.paymentMethodTitle}>
-                M-Pesa Manual Transfer
-              </Text>
-           
-            </View>
-          </View>
+<Text style={styles.sectionTitle}>Payment Details</Text>
 
-          <View style={styles.divider} />
+<View style={styles.card}>
+  <View style={styles.mpesaHeader}>
+    <View style={styles.mpesaIconWrapper}>
+      <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
+    </View>
 
-          <Text style={styles.inputLabel}>M-Pesa Phone Number</Text>
-          <Text style={styles.inputContext}>
-            Provide the number you will use to send the payment so we can verify
-            your transaction.
-          </Text>
+    <View style={{ flex: 1 }}>
+      <Text style={styles.paymentMethodTitle}>
+        Order via WhatsApp
+      </Text>
 
-          <View
-            style={[
-              styles.inputWrapper,
-              phoneError && styles.inputWrapperError,
-            ]}
-          >
-            <Text style={styles.inputPrefix}>+254</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="712 345 678"
-              placeholderTextColor={colors.textMuted}
-              value={phone.replace(/^(254|0)/, "")} 
-              onChangeText={(v) => {
-                setPhone(v);
-                setPhoneError(null);
-              }}
-              keyboardType="phone-pad"
-              maxLength={10}
-            />
-          </View>
-          {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
-        </View>
+      <Text style={styles.paymentMethodSub}>
+        Your order will be sent to Lumire Shop WhatsApp for confirmation
+      </Text>
+    </View>
+  </View>
 
+  <View style={styles.divider} />
+
+  <View style={{ gap: 10 }}>
+    <Text style={styles.inputContext}>
+      After placing your order, you will be redirected to WhatsApp where
+      we confirm your items and delivery details.
+    </Text>
+
+    <Text style={styles.inputContext}>
+      You can then choose to pay via <Text style={{ fontWeight: "700" }}>M-Pesa</Text> or
+      <Text style={{ fontWeight: "700" }}> Cash on Delivery</Text>.
+    </Text>
+
+    <View style={styles.infoBox}>
+      <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+      <Text style={styles.infoText}>
+        No payment is made inside the app. Payment happens after confirmation on WhatsApp.
+      </Text>
+    </View>
+  </View>
+
+  <View style={styles.divider} />
+
+  <Text style={styles.inputLabel}>M-Pesa Phone Number</Text>
+  <Text style={styles.inputContext}>
+    Enter the number you will use for M-Pesa payment confirmation.
+  </Text>
+
+  <View
+    style={[
+      styles.inputWrapper,
+      phoneError && styles.inputWrapperError,
+    ]}
+  >
+    <Text style={styles.inputPrefix}>+254</Text>
+    <TextInput
+      style={styles.input}
+      placeholder="712 345 678"
+      placeholderTextColor={colors.textMuted}
+      value={phone.replace(/^(254|0)/, "")}
+      onChangeText={(v) => {
+        setPhone(v);
+        setPhoneError(null);
+      }}
+      keyboardType="phone-pad"
+      maxLength={10}
+    />
+  </View>
+
+  {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
+</View>
         {/* ── Server Error ── */}
         {error && (
           <View style={styles.serverErrorBlock}>
@@ -795,5 +820,24 @@ normalInput: {
   fontSize: 15,
   color: colors.text,
   paddingVertical: 12,
+},
+
+// payment details
+infoBox: {
+  flexDirection: "row",
+  alignItems: "flex-start",
+  gap: 10,
+  backgroundColor: "rgba(246,221,207,0.4)",
+  borderRadius: 14,
+  padding: 12,
+  borderWidth: 1,
+  borderColor: colors.border,
+},
+
+infoText: {
+  flex: 1,
+  fontSize: 13,
+  color: colors.textSecondary,
+  lineHeight: 18,
 },
 });
