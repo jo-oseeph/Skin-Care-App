@@ -31,7 +31,7 @@ export default function OrderConfirmationScreen() {
   const [loading, setLoading] = useState(true);
 
   // M-Pesa details for manual payment instructions
-  const MPESA_TILL = "123456"; 
+  const MPESA_TILL = "467452"; 
 
   useEffect(() => {
     const load = async () => {

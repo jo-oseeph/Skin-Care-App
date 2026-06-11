@@ -18,7 +18,7 @@ import { colors } from "../../src/constants/colors";
 
 const { height } = Dimensions.get("window");
 
-// ── Single Cart Item ───────────────────────────────────────
+// Single Cart Item 
 function CartItem({ item, onIncrease, onDecrease }) {
   const isMaxStock = item.quantity >= item.stock;
 
@@ -45,7 +45,7 @@ function CartItem({ item, onIncrease, onDecrease }) {
           </Text>
           <TouchableOpacity 
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            onPress={() => onDecrease(true)} // Force delete
+            onPress={() => onDecrease(true)} 
           >
             <Ionicons name="close" size={20} color={colors.textMuted} />
           </TouchableOpacity>
@@ -95,7 +95,7 @@ function CartItem({ item, onIncrease, onDecrease }) {
   );
 }
 
-// ── Main Cart Screen ───────────────────────────────────────
+// Main Cart Screen
 export default function CartScreen() {
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
@@ -127,7 +127,7 @@ export default function CartScreen() {
     requireAuth(() => router.push("/checkout"));
   };
 
-  // ── Empty State ──
+  //Empty State 
   if (isEmpty) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -192,19 +192,6 @@ export default function CartScreen() {
 
       {/* Unified Bottom Checkout Sheet */}
       <View style={[styles.checkoutSheet, { paddingBottom: insets.bottom + 16 }]}>
-        
-        {/* Receipt-style Summary */}
-        <View style={styles.summaryContainer}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>KSh {totalPrice.toLocaleString()}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Shipping</Text>
-            <Text style={styles.deliveryFree}>Calculated at checkout</Text>
-          </View>
-        </View>
-
         <View style={styles.divider} />
 
         <View style={styles.totalRow}>
@@ -230,7 +217,7 @@ export default function CartScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface, // Warm background
+    backgroundColor: colors.surface, 
   },
   
   // Header
@@ -262,7 +249,7 @@ const styles = StyleSheet.create({
   // List
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 240, // Padding to ensure last item clears the bottom sheet
+    paddingBottom: 240, 
     gap: 16,
   },
 
@@ -283,7 +270,7 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 16,
-    backgroundColor: "rgba(246,221,207,0.5)", // Soft peach placeholder
+    backgroundColor: "rgba(246,221,207,0.5)", 
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
@@ -453,7 +440,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
-    marginTop: -height * 0.1, // Visually center despite header
+    marginTop: -height * 0.1, 
   },
   emptyVisual: {
     width: 120,
