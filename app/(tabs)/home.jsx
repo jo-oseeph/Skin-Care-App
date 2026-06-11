@@ -148,9 +148,6 @@ export default function HomeScreen() {
       <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.logo}>LUMERA</Text>
         <View style={styles.topIcons}>
-          <TouchableOpacity style={styles.iconBtn}>
-            <Ionicons name="search-outline" size={19} color={colors.text} />
-          </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconBtn}
             onPress={() => router.push("/(tabs)/cart")}
@@ -406,19 +403,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  categoryIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 999,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-  },
+ // AFTER
+categoryIconCircle: {
+  width: 52,
+  height: 52,
+  borderRadius: 999,
+  justifyContent: "center",
+  alignItems: "center",
+  backgroundColor: colors.white,       
+  borderWidth: 2.5,
+  borderColor: colors.accent,        
+},
   categoryLabel: {
     fontSize: 11,
-    fontWeight: "500",
+    fontWeight: "700",
     color: colors.textMuted,
     letterSpacing: 0.3,
   },
