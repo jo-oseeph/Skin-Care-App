@@ -1,32 +1,32 @@
 export const colors = {
-  // ── Brand ─────────────────────────────
+  //Brand 
   primary: "#2A160F",       // dark chocolate button
   primarySoft: "#4A2A20",
 
-  // ── Backgrounds ──────────────────────
+  //Backgrounds 
   background: "#F6DDCF",    // exact peach nude tone
   card: "#FFF6F1",
   surface: "#FBEAE0",
 
-  // ── Accent ───────────────────────────
+  //Accent 
   accent: "#F3C3A7",
   accentSoft: "#F9E5D9",
 
-  // ── Borders ──────────────────────────
+  //Borders
   border: "#EFD3C3",
 
-  // ── Text ─────────────────────────────
+  //Text 
   text: "#2A160F",
   textSecondary: "#8A6D60",
   textMuted: "#B89E91",
 
-  // ── Semantic ─────────────────────────
+  //  Semantic 
   white: "#FFFFFF",
   black: "#000000",
   success: "#6E8B6D",
   error: "#D46A6A",
 
-  // ── Skeleton ─────────────────────────
+  //Skeleton 
   skeleton: "#F3D9CB",
   skeletonHighlight: "#FAEEE8",
 };
