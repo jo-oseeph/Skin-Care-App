@@ -77,7 +77,7 @@ export default function ProductCard({ product, onPress, onAddToCart }) {
             {product.name}
           </Text>
           {/* Price */}
-          <Text style={styles.price}>KSh {displayPrice}</Text>
+          <Text style={styles.price}>KSH {displayPrice}</Text>
         </View>
 
         {/* Add to cart circular button — bottom right like in the reference */}

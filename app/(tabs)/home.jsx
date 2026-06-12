@@ -1,15 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   FlatList,
   Image,
   TouchableOpacity,
-  ActivityIndicator,
   StyleSheet,
   Dimensions,
   StatusBar,
   ScrollView,
+  Animated,
 } from "react-native";
 
 import { useRouter } from "expo-router";
@@ -27,23 +27,136 @@ const CARD_WIDTH = (width - 52) / 2;
 const BANNER_IMAGE =
   "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?q=80&w=1400&auto=format&fit=crop";
 
-// Categories are now navigation shortcuts — they don't filter Home,
-// they take the user into the Products tab pre-filtered.
 const CATEGORIES = [
-  { id: "All", label: "All", icon: "apps-outline" },
-  { id: "cleanser", label: "Cleanser", icon: "water-outline" },
-  { id: "serum", label: "Serum", icon: "flask-outline" },
-  { id: "moisturizer", label: "Moisturizer", icon: "leaf-outline" },
-  { id: "sunscreen", label: "Sunscreen", icon: "sunny-outline" },
-  { id: "toner", label: "Toner", icon: "color-filter-outline" },
-  { id: "exfoliant", label: "Exfoliant", icon: "sparkles-outline" },
-  { id: "mask", label: "Mask", icon: "happy-outline" },
-  { id: "eye_cream", label: "Eye Cream", icon: "eye-outline" },
-  { id: "spot_treatment", label: "Spot Care", icon: "medical-outline" },
-  { id: "oil", label: "Oil", icon: "water-outline" },
+  { id: "All",           label: "All",       icon: "apps-outline"          },
+  { id: "cleanser",      label: "Cleanser",  icon: "water-outline"         },
+  { id: "serum",         label: "Serum",     icon: "flask-outline"         },
+  { id: "moisturizer",   label: "Moisturizer",icon: "leaf-outline"         },
+  { id: "sunscreen",     label: "Sunscreen", icon: "sunny-outline"         },
+  { id: "toner",         label: "Toner",     icon: "color-filter-outline"  },
+  { id: "exfoliant",     label: "Exfoliant", icon: "sparkles-outline"      },
+  { id: "mask",          label: "Mask",      icon: "happy-outline"         },
+  { id: "eye_cream",     label: "Eye Cream", icon: "eye-outline"           },
+  { id: "spot_treatment",label: "Spot Care", icon: "medical-outline"       },
+  { id: "oil",           label: "Oil",       icon: "water-outline"         },
 ];
 
-// Category pill — no active state here since we're navigating, not filtering
+// ─────────────────────────────────────────────
+// Shimmer hook — single shared animation value
+// ─────────────────────────────────────────────
+function useShimmer() {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: false,
+        }),
+        Animated.timing(anim, {
+          toValue: 0,
+          duration: 900,
+          useNativeDriver: false,
+        }),
+      ])
+    ).start();
+  }, []);
+  const bg = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [colors.skeleton, colors.skeletonHighlight],
+  });
+  return bg;
+}
+
+// ─────────────────────────────────────────────
+// Skeleton pieces
+// ─────────────────────────────────────────────
+function SkeletonBox({ style }) {
+  const bg = useShimmer();
+  return <Animated.View style={[styles.skeletonBase, { backgroundColor: bg }, style]} />;
+}
+
+function SkeletonProductCard() {
+  return (
+    <View style={[styles.card, { width: CARD_WIDTH }]}>
+      <SkeletonBox style={styles.skeletonCardImage} />
+      <View style={styles.cardBody}>
+        <SkeletonBox style={styles.skeletonCardName} />
+        <View style={styles.cardFooter}>
+          <SkeletonBox style={styles.skeletonCardPrice} />
+          <SkeletonBox style={styles.skeletonCardCta} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function SkeletonCategoryPill() {
+  return (
+    <View style={styles.categoryPill}>
+      <SkeletonBox style={styles.skeletonCategoryCircle} />
+      <SkeletonBox style={styles.skeletonCategoryLabel} />
+    </View>
+  );
+}
+
+function SkeletonScreen({ insets }) {
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Top bar */}
+      <View style={[styles.topBar, { paddingTop: 12 }]}>
+        <SkeletonBox style={{ width: 110, height: 28, borderRadius: 6 }} />
+        <SkeletonBox style={{ width: 40, height: 40, borderRadius: 999 }} />
+      </View>
+
+      {/* Banner */}
+      <SkeletonBox
+        style={{
+          marginHorizontal: 20,
+          height: 200,
+          borderRadius: 24,
+          marginBottom: 30,
+        }}
+      />
+
+      {/* Section row */}
+      <View style={styles.sectionRow}>
+        <SkeletonBox style={{ width: 120, height: 22, borderRadius: 6 }} />
+        <SkeletonBox style={{ width: 50, height: 16, borderRadius: 6 }} />
+      </View>
+
+      {/* Category pills */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[styles.categoriesScroll, { marginBottom: 22 }]}
+        scrollEnabled={false}
+      >
+        {Array.from({ length: 6 }).map((_, i) => (
+          <SkeletonCategoryPill key={i} />
+        ))}
+      </ScrollView>
+
+      {/* Section row */}
+      <View style={[styles.sectionRow, { marginTop: 8, marginBottom: 16 }]}>
+        <SkeletonBox style={{ width: 130, height: 22, borderRadius: 6 }} />
+        <SkeletonBox style={{ width: 50, height: 16, borderRadius: 6 }} />
+      </View>
+
+      {/* Product grid — 6 cards */}
+      <View style={styles.skeletonGrid}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <SkeletonProductCard key={i} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Category pill (live)
+// ─────────────────────────────────────────────
 function CategoryPill({ item, onPress }) {
   return (
     <TouchableOpacity
@@ -52,17 +165,16 @@ function CategoryPill({ item, onPress }) {
       style={styles.categoryPill}
     >
       <View style={styles.categoryIconCircle}>
-        <Ionicons
-          name={item.icon}
-          size={18}
-          color={colors.textSecondary}
-        />
+        <Ionicons name={item.icon} size={18} color={colors.primary} />
       </View>
       <Text style={styles.categoryLabel}>{item.label}</Text>
     </TouchableOpacity>
   );
 }
 
+// ─────────────────────────────────────────────
+// Product card (live)
+// ─────────────────────────────────────────────
 function ProductCard({ product, onPress }) {
   const imageUri =
     product.images?.[0] ||
@@ -71,7 +183,7 @@ function ProductCard({ product, onPress }) {
   return (
     <TouchableOpacity
       activeOpacity={0.88}
-      style={styles.card}
+      style={[styles.card, { width: CARD_WIDTH }]}
       onPress={onPress}
     >
       <View style={styles.cardImageBox}>
@@ -94,7 +206,11 @@ function ProductCard({ product, onPress }) {
           <Text style={styles.cardPrice}>
             KSh {product.price.toLocaleString()}
           </Text>
-          <TouchableOpacity style={styles.cardCta} activeOpacity={0.85} onPress={onPress}>
+          <TouchableOpacity
+            style={styles.cardCta}
+            activeOpacity={0.85}
+            onPress={onPress}
+          >
             <Ionicons name="arrow-forward" size={13} color={colors.background} />
           </TouchableOpacity>
         </View>
@@ -103,13 +219,16 @@ function ProductCard({ product, onPress }) {
   );
 }
 
+// ─────────────────────────────────────────────
+// Home screen
+// ─────────────────────────────────────────────
 export default function HomeScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const router  = useRouter();
+  const insets  = useSafeAreaInsets();
   const { totalItems } = useCart();
 
   const [featured, setFeatured] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
     loadFeatured();
@@ -117,13 +236,12 @@ export default function HomeScreen() {
 
   const loadFeatured = async () => {
     setLoading(true);
-    // Only fetch latest 8 products for the Home featured section
-    const result = await getFeaturedProducts({ sortBy: "newest", limit: 8 });
+    // 6 products only — enough to tease, not enough to replace the Products tab
+    const result = await getFeaturedProducts({ sortBy: "newest", limit: 6 });
     if (result.success) setFeatured(result.products);
     setLoading(false);
   };
 
-  // Navigate to Products tab with a category pre-selected
   const handleCategoryPress = (categoryId) => {
     router.push({
       pathname: "/(tabs)/products",
@@ -131,7 +249,6 @@ export default function HomeScreen() {
     });
   };
 
-  // Navigate to Products tab with no filter
   const handleSeeAllProducts = () => {
     router.push({
       pathname: "/(tabs)/products",
@@ -141,6 +258,11 @@ export default function HomeScreen() {
 
   const handleProductPress = (product) =>
     router.push(`/product/${product._id}`);
+
+  // Show skeleton while loading — full layout, not just a spinner
+  if (loading) {
+    return <SkeletonScreen insets={insets} />;
+  }
 
   const ListHeader = () => (
     <View>
@@ -192,7 +314,7 @@ export default function HomeScreen() {
         </View>
       </TouchableOpacity>
 
-      {/* ── Collections (navigate into Products tab) ── */}
+      {/* ── Collections ── */}
       <View style={styles.sectionRow}>
         <Text style={styles.sectionTitle}>Collections</Text>
         <TouchableOpacity onPress={handleSeeAllProducts}>
@@ -214,7 +336,7 @@ export default function HomeScreen() {
         ))}
       </ScrollView>
 
-      {/* ── New Arrivals Header ── */}
+      {/* ── New Arrivals header ── */}
       <View style={[styles.sectionRow, { marginTop: 8 }]}>
         <Text style={styles.sectionTitle}>New Arrivals</Text>
         <TouchableOpacity onPress={handleSeeAllProducts}>
@@ -224,13 +346,17 @@ export default function HomeScreen() {
     </View>
   );
 
-  if (loading && featured.length === 0) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
+  const ListFooter = () =>
+    featured.length > 0 ? (
+      <TouchableOpacity
+        style={styles.viewMoreBtn}
+        activeOpacity={0.85}
+        onPress={handleSeeAllProducts}
+      >
+        <Text style={styles.viewMoreText}>View More Products</Text>
+        <Ionicons name="arrow-forward" size={16} color={colors.background} />
+      </TouchableOpacity>
+    ) : null;
 
   return (
     <View style={styles.container}>
@@ -244,6 +370,7 @@ export default function HomeScreen() {
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={ListHeader}
+        ListFooterComponent={ListFooter}
         renderItem={({ item }) => (
           <ProductCard
             product={item}
@@ -251,11 +378,9 @@ export default function HomeScreen() {
           />
         )}
         ListEmptyComponent={
-          !loading && (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No products yet</Text>
-            </View>
-          )
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No products yet</Text>
+          </View>
         }
       />
     </View>
@@ -267,14 +392,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: colors.background,
-  },
   listContent: {
-    paddingBottom: 36,
+    paddingBottom: 48,
   },
 
   // ── Top Bar ──
@@ -403,17 +522,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
- // AFTER
-categoryIconCircle: {
-  width: 52,
-  height: 52,
-  borderRadius: 999,
-  justifyContent: "center",
-  alignItems: "center",
-  backgroundColor: colors.white,       
-  borderWidth: 2.5,
-  borderColor: colors.accent,        
-},
+  categoryIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 999,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    borderWidth: 2.5,
+    borderColor: colors.accent,
+  },
   categoryLabel: {
     fontSize: 11,
     fontWeight: "700",
@@ -421,14 +539,13 @@ categoryIconCircle: {
     letterSpacing: 0.3,
   },
 
-  // ── Product Grid ──
+  // ── Product grid ──
   row: {
     justifyContent: "space-between",
     paddingHorizontal: 20,
     marginBottom: 16,
   },
   card: {
-    width: CARD_WIDTH,
     backgroundColor: colors.card,
     borderRadius: 20,
     padding: 10,
@@ -494,6 +611,33 @@ categoryIconCircle: {
     justifyContent: "center",
     alignItems: "center",
   },
+
+  // ── View More button ──
+  viewMoreBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 12,
+    paddingVertical: 16,
+    borderRadius: 999,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  viewMoreText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.background,
+    letterSpacing: 0.3,
+  },
+
+  // ── Empty ──
   emptyContainer: {
     alignItems: "center",
     paddingTop: 40,
@@ -501,5 +645,49 @@ categoryIconCircle: {
   emptyText: {
     fontSize: 14,
     color: colors.textMuted,
+  },
+
+  // ── Skeleton ──
+  skeletonBase: {
+    borderRadius: 8,
+  },
+  skeletonGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  skeletonCardImage: {
+    width: "100%",
+    height: 148,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  skeletonCardName: {
+    height: 13,
+    borderRadius: 6,
+    width: "70%",
+    marginBottom: 8,
+  },
+  skeletonCardPrice: {
+    height: 15,
+    borderRadius: 6,
+    width: "45%",
+  },
+  skeletonCardCta: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+  },
+  skeletonCategoryCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 999,
+  },
+  skeletonCategoryLabel: {
+    width: 44,
+    height: 10,
+    borderRadius: 6,
+    marginTop: 6,
   },
 });
