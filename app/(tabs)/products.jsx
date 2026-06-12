@@ -1,15 +1,17 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   StyleSheet,
   RefreshControl,
   TextInput,
   StatusBar,
   ScrollView,
+  Animated,
+  Modal,
+  Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -19,37 +21,122 @@ import { getProducts } from "../../src/services/productService";
 import ProductCard from "../../src/components/common/ProductCard";
 import { colors } from "../../src/constants/colors";
 
+const { width } = require("react-native").Dimensions.get("window");
+const CARD_WIDTH = (width - 56) / 2;
+
 const CATEGORIES = [
-  { id: "All", label: "All", icon: "apps-outline" },
-  { id: "cleanser", label: "Cleanser", icon: "water-outline" },
-  { id: "serum", label: "Serum", icon: "flask-outline" },
-  { id: "moisturizer", label: "Moisturizer", icon: "leaf-outline" },
-  { id: "sunscreen", label: "Sunscreen", icon: "sunny-outline" },
-  { id: "toner", label: "Toner", icon: "color-filter-outline" },
-  { id: "exfoliant", label: "Exfoliant", icon: "sparkles-outline" },
-  { id: "mask", label: "Mask", icon: "happy-outline" },
-  { id: "eye_cream", label: "Eye Cream", icon: "eye-outline" },
-  { id: "spot_treatment", label: "Spot Care", icon: "medical-outline" },
-  { id: "oil", label: "Oil", icon: "water-outline" },
+  { id: "All",            label: "All",        icon: "apps-outline"         },
+  { id: "cleanser",       label: "Cleanser",   icon: "water-outline"        },
+  { id: "serum",          label: "Serum",      icon: "flask-outline"        },
+  { id: "moisturizer",    label: "Moisturizer",icon: "leaf-outline"         },
+  { id: "sunscreen",      label: "Sunscreen",  icon: "sunny-outline"        },
+  { id: "toner",          label: "Toner",      icon: "color-filter-outline" },
+  { id: "exfoliant",      label: "Exfoliant",  icon: "sparkles-outline"     },
+  { id: "mask",           label: "Mask",       icon: "happy-outline"        },
+  { id: "eye_cream",      label: "Eye Cream",  icon: "eye-outline"          },
+  { id: "spot_treatment", label: "Spot Care",  icon: "medical-outline"      },
+  { id: "oil",            label: "Oil",        icon: "water-outline"        },
 ];
 
+const SORT_OPTIONS = [
+  { id: "newest",       label: "Newest First",    icon: "time-outline"          },
+  { id: "price_asc",    label: "Price: Low → High",icon: "trending-up-outline"  },
+  { id: "price_desc",   label: "Price: High → Low",icon: "trending-down-outline"},
+  { id: "name_asc",     label: "Name: A → Z",     icon: "text-outline"          },
+];
+
+// ─────────────────────────────────────────────
+// Shimmer skeleton
+// ─────────────────────────────────────────────
+function useShimmer() {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 900, useNativeDriver: false }),
+        Animated.timing(anim, { toValue: 0, duration: 900, useNativeDriver: false }),
+      ])
+    ).start();
+  }, []);
+  return anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [colors.skeleton, colors.skeletonHighlight],
+  });
+}
+
+function SkeletonBox({ style }) {
+  const bg = useShimmer();
+  return <Animated.View style={[{ borderRadius: 8, backgroundColor: bg }, style]} />;
+}
+
+function SkeletonProductCard() {
+  return (
+    <View style={[styles.skeletonCard, { width: CARD_WIDTH }]}>
+      <SkeletonBox style={styles.skeletonImage} />
+      <View style={{ padding: 10, gap: 6 }}>
+        <SkeletonBox style={{ height: 10, width: "50%", borderRadius: 5 }} />
+        <SkeletonBox style={{ height: 13, width: "80%", borderRadius: 5 }} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+          <SkeletonBox style={{ height: 13, width: "40%", borderRadius: 5 }} />
+          <SkeletonBox style={{ width: 34, height: 34, borderRadius: 17 }} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function SkeletonCategoryPill() {
+  return (
+    <View style={{ alignItems: "center", gap: 6 }}>
+      <SkeletonBox style={{ width: 52, height: 52, borderRadius: 999 }} />
+      <SkeletonBox style={{ width: 44, height: 10, borderRadius: 5 }} />
+    </View>
+  );
+}
+
+function SkeletonHeader({ insets }) {
+  return (
+    <View style={styles.headerContainer}>
+      {/* Top bar */}
+      <View style={styles.topBar}>
+        <SkeletonBox style={{ width: 120, height: 28, borderRadius: 6 }} />
+        <SkeletonBox style={{ width: 42, height: 42, borderRadius: 999 }} />
+      </View>
+      {/* Search */}
+      <SkeletonBox style={{ marginHorizontal: 20, height: 48, borderRadius: 999, marginBottom: 24 }} />
+      {/* Section label */}
+      <View style={[styles.sectionRow, { marginBottom: 16 }]}>
+        <SkeletonBox style={{ width: 110, height: 22, borderRadius: 6 }} />
+      </View>
+      {/* Category pills */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[styles.categoriesScroll]} scrollEnabled={false}>
+        {Array.from({ length: 6 }).map((_, i) => <SkeletonCategoryPill key={i} />)}
+      </ScrollView>
+      {/* Count row */}
+      <View style={[styles.sectionRow, { marginTop: 10, marginBottom: 16 }]}>
+        <SkeletonBox style={{ width: 130, height: 22, borderRadius: 6 }} />
+        <SkeletonBox style={{ width: 55, height: 16, borderRadius: 6 }} />
+      </View>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Category pill
+// ─────────────────────────────────────────────
 function CategoryPill({ item, active, onPress }) {
   return (
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={onPress}
-      style={[styles.categoryPill, active && styles.categoryPillActive]}
+      style={styles.categoryPill}
     >
-      <View
-        style={[
-          styles.categoryIconCircle,
-          active && styles.categoryIconCircleActive,
-        ]}
-      >
+      <View style={[styles.categoryIconCircle, active && styles.categoryIconCircleActive]}>
         <Ionicons
           name={item.icon}
           size={18}
-          color={active ? colors.background : colors.textSecondary}
+          color={active ? colors.background : colors.primary}
         />
       </View>
       <Text style={[styles.categoryLabel, active && styles.categoryLabelActive]}>
@@ -59,52 +146,89 @@ function CategoryPill({ item, active, onPress }) {
   );
 }
 
-export default function ProductsScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
+// ─────────────────────────────────────────────
+// Sort modal
+// ─────────────────────────────────────────────
+function SortModal({ visible, currentSort, onSelect, onClose }) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <Pressable style={styles.modalOverlay} onPress={onClose}>
+        <Pressable style={styles.modalSheet} onPress={() => {}}>
+          <View style={styles.modalHandle} />
+          <Text style={styles.modalTitle}>Sort By</Text>
+          {SORT_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.id}
+              style={[styles.sortRow, currentSort === opt.id && styles.sortRowActive]}
+              onPress={() => { onSelect(opt.id); onClose(); }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.sortRowLeft}>
+                <Ionicons
+                  name={opt.icon}
+                  size={18}
+                  color={currentSort === opt.id ? colors.background : colors.primary}
+                />
+                <Text style={[styles.sortLabel, currentSort === opt.id && styles.sortLabelActive]}>
+                  {opt.label}
+                </Text>
+              </View>
+              {currentSort === opt.id && (
+                <Ionicons name="checkmark" size={18} color={colors.background} />
+              )}
+            </TouchableOpacity>
+          ))}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
 
-  // Read the category param passed from HomeScreen
+// ─────────────────────────────────────────────
+// Products screen
+// ─────────────────────────────────────────────
+export default function ProductsScreen() {
+  const router  = useRouter();
+  const insets  = useSafeAreaInsets();
   const { category: incomingCategory } = useLocalSearchParams();
 
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
+  const [products,  setProducts]  = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [refreshing,setRefreshing]= useState(false);
+  const [error,     setError]     = useState(null);
+  const [sortModal, setSortModal] = useState(false);
+  const [sortBy,    setSortBy]    = useState("newest");
 
-  // Initialise with incoming param if present, else default "All"
   const [category, setCategory] = useState(
     incomingCategory && CATEGORIES.find((c) => c.id === incomingCategory)
       ? incomingCategory
       : "All"
   );
 
-  const [search, setSearch] = useState("");
+  const [search,          setSearch]          = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // When the param changes (e.g. user taps a different category on Home again),
-  // sync the active category in this screen
   useEffect(() => {
-    if (
-      incomingCategory &&
-      CATEGORIES.find((c) => c.id === incomingCategory)
-    ) {
+    if (incomingCategory && CATEGORIES.find((c) => c.id === incomingCategory)) {
       setCategory(incomingCategory);
     }
   }, [incomingCategory]);
 
-  // Debounce search input
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 500);
-    return () => clearTimeout(handler);
+    const h = setTimeout(() => setDebouncedSearch(search), 500);
+    return () => clearTimeout(h);
   }, [search]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
-    const params = { sortBy: "newest", limit: 20 };
-    if (category !== "All") params.category = category;
-    if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+    const params = { sortBy, limit: 20 };
+    if (category !== "All")       params.category = category;
+    if (debouncedSearch.trim())   params.search   = debouncedSearch.trim();
 
     const result = await getProducts(params);
     if (result.success) {
@@ -114,11 +238,9 @@ export default function ProductsScreen() {
       setError(result.message || "Failed to load products");
     }
     setLoading(false);
-  }, [category, debouncedSearch]);
+  }, [category, debouncedSearch, sortBy]);
 
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -126,13 +248,24 @@ export default function ProductsScreen() {
     setRefreshing(false);
   };
 
+  const activeSortLabel = SORT_OPTIONS.find((o) => o.id === sortBy)?.label || "Sort";
+
   const ListHeader = () => (
     <View style={styles.headerContainer}>
       {/* ── Top bar ── */}
       <View style={styles.topBar}>
         <Text style={styles.topBarTitle}>Discover</Text>
-        <TouchableOpacity style={styles.iconBtn}>
-          <Ionicons name="options-outline" size={20} color={colors.text} />
+        {/* Sort button — shows active sort label */}
+        <TouchableOpacity
+          style={styles.sortBtn}
+          onPress={() => setSortModal(true)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="funnel-outline" size={15} color={colors.text} />
+          <Text style={styles.sortBtnText} numberOfLines={1}>
+            {activeSortLabel.split(":")[0].split(" ")[0]}
+          </Text>
+          <Ionicons name="chevron-down" size={13} color={colors.textMuted} />
         </TouchableOpacity>
       </View>
 
@@ -177,7 +310,7 @@ export default function ProductsScreen() {
         ))}
       </ScrollView>
 
-      {/* ── Product Count ── */}
+      {/* ── Count row ── */}
       <View style={[styles.sectionRow, { marginTop: 10 }]}>
         <Text style={styles.sectionTitle}>
           {category === "All" && !search ? "All Products" : "Results"}
@@ -193,6 +326,13 @@ export default function ProductsScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
+      <SortModal
+        visible={sortModal}
+        currentSort={sortBy}
+        onSelect={setSortBy}
+        onClose={() => setSortModal(false)}
+      />
+
       {error ? (
         <View style={styles.centered}>
           <Ionicons name="wifi-outline" size={44} color={colors.textMuted} />
@@ -203,28 +343,36 @@ export default function ProductsScreen() {
         </View>
       ) : (
         <FlatList
-          data={products}
+          data={loading && products.length === 0 ? [] : products}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
             <ProductCard
               product={item}
               onPress={() => router.push(`/product/${item._id}`)}
-              onAddToCart={() => console.log("Add to cart:", item._id)}
             />
           )}
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-          ListHeaderComponent={ListHeader}
+          ListHeaderComponent={
+            loading && products.length === 0
+              ? () => <SkeletonHeader insets={insets} />
+              : ListHeader
+          }
+          ListFooterComponent={
+            loading && products.length === 0 ? (
+              <View style={styles.skeletonGrid}>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <SkeletonProductCard key={i} />
+                ))}
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             !loading && (
               <View style={styles.emptyContainer}>
-                <Ionicons
-                  name="search-outline"
-                  size={44}
-                  color={colors.textMuted}
-                />
+                <Ionicons name="search-outline" size={44} color={colors.textMuted} />
                 <Text style={styles.emptyText}>No products found</Text>
               </View>
             )
@@ -238,12 +386,6 @@ export default function ProductsScreen() {
           }
         />
       )}
-
-      {loading && products.length === 0 && !refreshing && (
-        <View style={[StyleSheet.absoluteFill, styles.loadingOverlay]}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      )}
     </View>
   );
 }
@@ -255,6 +397,9 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     paddingBottom: 10,
+  },
+  listContent: {
+    paddingBottom: 40,
   },
 
   // ── Top bar ──
@@ -272,15 +417,22 @@ const styles = StyleSheet.create({
     color: colors.text,
     letterSpacing: 0.2,
   },
-  iconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 999,
+  sortBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     backgroundColor: colors.surface,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.border,
-    justifyContent: "center",
-    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  sortBtnText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.text,
+    maxWidth: 70,
   },
 
   // ── Search ──
@@ -305,7 +457,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
 
-  // ── Sections ──
+  // ── Section rows ──
   sectionRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -336,16 +488,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-categoryIconCircle: {
-  width: 52,
-  height: 52,
-  borderRadius: 999,
-  justifyContent: "center",
-  alignItems: "center",
-  backgroundColor: colors.white,      
-  borderWidth: 2.5,
-  borderColor: colors.accent,          
-},
+  categoryIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 999,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    borderWidth: 2.5,
+    borderColor: colors.accent,
+  },
   categoryIconCircleActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
@@ -362,13 +514,69 @@ categoryIconCircle: {
   },
 
   // ── Grid ──
-  listContent: {
-    paddingBottom: 40,
-  },
   row: {
     justifyContent: "space-between",
     paddingHorizontal: 20,
     marginBottom: 16,
+  },
+
+  // ── Sort modal ──
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(42,22,15,0.45)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 36,
+    gap: 6,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: colors.border,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+    marginBottom: 10,
+    letterSpacing: 0.2,
+  },
+  sortRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sortRowActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  sortRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  sortLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  sortLabelActive: {
+    color: colors.background,
   },
 
   // ── States ──
@@ -377,12 +585,6 @@ categoryIconCircle: {
     justifyContent: "center",
     alignItems: "center",
     gap: 12,
-  },
-  loadingOverlay: {
-    backgroundColor: "rgba(246,221,207,0.7)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10,
   },
   errorText: {
     fontSize: 14,
@@ -412,5 +614,25 @@ categoryIconCircle: {
     color: colors.background,
     fontWeight: "600",
     fontSize: 13,
+  },
+
+  //Skeleton 
+  skeletonCard: {
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  skeletonImage: {
+    width: "100%",
+    height: 148,
+    borderRadius: 0,
+  },
+  skeletonGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 20,
+    gap: 16,
   },
 });

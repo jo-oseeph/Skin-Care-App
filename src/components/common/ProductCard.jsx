@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   View,
   Text,
@@ -5,9 +6,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../constants/colors";
+import { useCart } from "../../context/CartContext";
 
 const CARD_WIDTH = (Dimensions.get("window").width - 56) / 2;
 
@@ -19,7 +22,12 @@ const formatCategory = (cat) => {
     .join(" ");
 };
 
-export default function ProductCard({ product, onPress, onAddToCart }) {
+export default function ProductCard({ product, onPress }) {
+  const { addToCart } = useCart();
+
+  // Per-card state: idle | loading | added | error
+  const [status, setStatus] = useState("idle");
+
   if (!product) {
     return (
       <View style={styles.card}>
@@ -35,9 +43,38 @@ export default function ProductCard({ product, onPress, onAddToCart }) {
     );
   }
 
+  const isOutOfStock = product.stock === 0;
   const displayPrice = product.price
     ? parseInt(product.price).toLocaleString()
     : "0";
+
+  const handleAddToCart = async () => {
+    if (status !== "idle" || isOutOfStock) return;
+
+    setStatus("loading");
+    const result = await addToCart(product, 1);
+
+    if (result?.success === false) {
+      setStatus("error");
+      setTimeout(() => setStatus("idle"), 2000);
+    } else {
+      setStatus("added");
+      setTimeout(() => setStatus("idle"), 2000);
+    }
+  };
+
+  // ── Button appearance driven by status ──
+  const btnBg =
+    status === "added" ? colors.success
+    : status === "error" ? colors.error
+    : isOutOfStock ? colors.textMuted
+    : colors.primary;
+
+  const btnIcon =
+    status === "loading" ? null
+    : status === "added"  ? "checkmark"
+    : status === "error"  ? "alert"
+    : "add";
 
   return (
     <TouchableOpacity
@@ -45,8 +82,8 @@ export default function ProductCard({ product, onPress, onAddToCart }) {
       onPress={onPress}
       activeOpacity={0.88}
     >
-      {/* Image area */}
-      {product.images && product.images.length > 0 ? (
+      {/* Image */}
+      {product.images?.length > 0 ? (
         <Image
           source={{ uri: product.images[0] }}
           style={styles.image}
@@ -58,8 +95,8 @@ export default function ProductCard({ product, onPress, onAddToCart }) {
         </View>
       )}
 
-      {/* Out of stock badge over image */}
-      {product.stock === 0 && (
+      {/* Out of stock overlay badge */}
+      {isOutOfStock && (
         <View style={styles.outOfStockBadge}>
           <Text style={styles.outOfStockText}>Out of stock</Text>
         </View>
@@ -68,26 +105,28 @@ export default function ProductCard({ product, onPress, onAddToCart }) {
       {/* Info row */}
       <View style={styles.info}>
         <View style={styles.textCol}>
-          {/* Category */}
           <Text style={styles.category}>
             {formatCategory(product.category)}
           </Text>
-          {/* Name */}
           <Text style={styles.name} numberOfLines={2}>
             {product.name}
           </Text>
-          {/* Price */}
-          <Text style={styles.price}>KSH {displayPrice}</Text>
+          <Text style={styles.price}>KSh {displayPrice}</Text>
         </View>
 
-        {/* Add to cart circular button — bottom right like in the reference */}
+        {/* Add to cart button */}
         <TouchableOpacity
-          style={[styles.addBtn, product.stock === 0 && styles.addBtnDisabled]}
-          onPress={onAddToCart}
-          disabled={product.stock === 0}
+          style={[styles.addBtn, { backgroundColor: btnBg }]}
+          onPress={handleAddToCart}
+          disabled={status !== "idle" || isOutOfStock}
           activeOpacity={0.8}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-          <Ionicons name="add" size={20} color={colors.white} />
+          {status === "loading" ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <Ionicons name={btnIcon} size={20} color={colors.white} />
+          )}
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -103,8 +142,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     width: CARD_WIDTH,
   },
-
-  // Image
   image: {
     width: "100%",
     height: 148,
@@ -112,31 +149,28 @@ const styles = StyleSheet.create({
   imagePlaceholder: {
     width: "100%",
     height: 148,
-    backgroundColor: colors.accent, // blush placeholder
+    backgroundColor: colors.surface,
     justifyContent: "center",
     alignItems: "center",
   },
-
-  // Out of stock badge
   outOfStockBadge: {
     position: "absolute",
     top: 8,
     left: 8,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: "rgba(42,22,15,0.75)",
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 4,
+    borderRadius: 6,
   },
   outOfStockText: {
     color: colors.white,
     fontSize: 9,
     fontWeight: "600",
+    letterSpacing: 0.3,
   },
-
-  // Bottom info section
   info: {
     padding: 10,
-    flexDirection: "row", // text on left, button on right
+    flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
   },
@@ -147,7 +181,7 @@ const styles = StyleSheet.create({
   },
   category: {
     fontSize: 10,
-    color: colors.primary,
+    color: colors.primarySoft,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -164,18 +198,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 2,
   },
-
-  // Add to cart button — circular, forest green
   addBtn: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
-    flexShrink: 0, // don't shrink when name is long
-  },
-  addBtnDisabled: {
-    backgroundColor: colors.textMuted,
+    flexShrink: 0,
   },
 });
