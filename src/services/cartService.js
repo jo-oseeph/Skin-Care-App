@@ -2,7 +2,6 @@ import axios from 'axios';
 import { BASE_URL } from '../constants/api';
 import { getToken } from '../utils/storage';
 
-// All backend cart calls need the auth token
 const authRequest = async () => {
   const token = await getToken();
   return axios.create({
@@ -12,9 +11,7 @@ const authRequest = async () => {
   });
 };
 
-// ── GET cart from backend ──────────────────────────────────
-// Backend returns: { success, data: { items: [...] } }
-// Each item has: { productId: { _id, name, price, images }, quantity }
+//GET cart from backend 
 export const fetchBackendCart = async () => {
   try {
     const api = await authRequest();
@@ -28,8 +25,7 @@ export const fetchBackendCart = async () => {
   }
 };
 
-// ── ADD item to backend cart ───────────────────────────────
-// POST /api/cart  body: { productId, quantity }
+// ADD item to backend cart 
 export const addItemToBackend = async (productId, quantity) => {
   try {
     const api = await authRequest();
@@ -43,8 +39,7 @@ export const addItemToBackend = async (productId, quantity) => {
   }
 };
 
-// ── UPDATE item quantity on backend ───────────────────────
-// PATCH /api/cart  body: { productId, quantity }
+//UPDATE item quantity on backend 
 export const updateItemOnBackend = async (productId, quantity) => {
   try {
     const api = await authRequest();
@@ -58,8 +53,7 @@ export const updateItemOnBackend = async (productId, quantity) => {
   }
 };
 
-// ── REMOVE item from backend ───────────────────────────────
-// DELETE /api/cart/:productId
+//REMOVE item from backend 
 export const removeItemFromBackend = async (productId) => {
   try {
     const api = await authRequest();
@@ -73,8 +67,7 @@ export const removeItemFromBackend = async (productId) => {
   }
 };
 
-// ── CLEAR entire cart on backend ───────────────────────────
-// DELETE /api/cart
+//CLEAR entire cart on backend
 export const clearBackendCart = async () => {
   try {
     const api = await authRequest();
