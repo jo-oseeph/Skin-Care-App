@@ -159,7 +159,7 @@ export default function CartScreen() {
     );
   }
 
-  // ── Active Cart State ──
+  // Active Cart State
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />

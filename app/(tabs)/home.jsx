@@ -41,9 +41,7 @@ const CATEGORIES = [
   { id: "oil",           label: "Oil",       icon: "water-outline"         },
 ];
 
-// ─────────────────────────────────────────────
 // Shimmer hook — single shared animation value
-// ─────────────────────────────────────────────
 function useShimmer() {
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -69,9 +67,7 @@ function useShimmer() {
   return bg;
 }
 
-// ─────────────────────────────────────────────
 // Skeleton pieces
-// ─────────────────────────────────────────────
 function SkeletonBox({ style }) {
   const bg = useShimmer();
   return <Animated.View style={[styles.skeletonBase, { backgroundColor: bg }, style]} />;
@@ -154,9 +150,7 @@ function SkeletonScreen({ insets }) {
   );
 }
 
-// ─────────────────────────────────────────────
 // Category pill (live)
-// ─────────────────────────────────────────────
 function CategoryPill({ item, onPress }) {
   return (
     <TouchableOpacity
@@ -172,9 +166,7 @@ function CategoryPill({ item, onPress }) {
   );
 }
 
-// ─────────────────────────────────────────────
 // Product card (live)
-// ─────────────────────────────────────────────
 function ProductCard({ product, onPress }) {
   const imageUri =
     product.images?.[0] ||
@@ -219,9 +211,7 @@ function ProductCard({ product, onPress }) {
   );
 }
 
-// ─────────────────────────────────────────────
 // Home screen
-// ─────────────────────────────────────────────
 export default function HomeScreen() {
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
@@ -236,7 +226,7 @@ export default function HomeScreen() {
 
   const loadFeatured = async () => {
     setLoading(true);
-    // 6 products only — enough to tease, not enough to replace the Products tab
+    // 6 products only
     const result = await getFeaturedProducts({ sortBy: "newest", limit: 6 });
     if (result.success) setFeatured(result.products);
     setLoading(false);

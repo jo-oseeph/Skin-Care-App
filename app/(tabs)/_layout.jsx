@@ -9,7 +9,7 @@ function TabIcon({ name, color, size }) {
   return <Ionicons name={name} size={size} color={color} />;
 }
 
-// Cart icon with a badge showing item count
+// Cart icon
 function CartIcon({ color, size, focused }) {
   const { totalItems } = useCart();
 
