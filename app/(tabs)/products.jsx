@@ -44,10 +44,7 @@ const SORT_OPTIONS = [
   { id: "price_desc",   label: "Price: High → Low",icon: "trending-down-outline"},
   { id: "name_asc",     label: "Name: A → Z",     icon: "text-outline"          },
 ];
-
-// ─────────────────────────────────────────────
 // Shimmer skeleton
-// ─────────────────────────────────────────────
 function useShimmer() {
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -122,9 +119,7 @@ function SkeletonHeader({ insets }) {
   );
 }
 
-// ─────────────────────────────────────────────
 // Category pill
-// ─────────────────────────────────────────────
 function CategoryPill({ item, active, onPress }) {
   return (
     <TouchableOpacity
