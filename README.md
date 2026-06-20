@@ -1,26 +1,6 @@
-# Lumière Skin 🧴
+# Lumière Skin 
 
 A modern, full-featured skincare e-commerce mobile application built with React Native and Expo. Browse, shop, and manage skincare products with a beautiful UI, seamless authentication, and secure payment integration.
-
----
-
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Core Modules](#core-modules)
-- [Getting Started](#getting-started)
-- [API Integration](#api-integration)
-- [State Management](#state-management)
-- [Navigation Flow](#navigation-flow)
-- [Key Components & Screens](#key-components--screens)
-- [Utility Functions](#utility-functions)
-- [Scripts](#scripts)
-
----
-
 ## Overview
 
 **Lumière Skin** is a React Native mobile application designed for IOS, and Android platforms. It provides a complete skincare shopping experience with:

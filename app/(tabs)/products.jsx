@@ -146,9 +146,7 @@ function CategoryPill({ item, active, onPress }) {
   );
 }
 
-// ─────────────────────────────────────────────
 // Sort modal
-// ─────────────────────────────────────────────
 function SortModal({ visible, currentSort, onSelect, onClose }) {
   return (
     <Modal
@@ -189,9 +187,7 @@ function SortModal({ visible, currentSort, onSelect, onClose }) {
   );
 }
 
-// ─────────────────────────────────────────────
-// Products screen
-// ─────────────────────────────────────────────
+// Products screen 
 export default function ProductsScreen() {
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
